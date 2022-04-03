@@ -5,8 +5,8 @@ defmodule Modkit.PathResolveTest do
     mount_points = [
       {App.Test, "test/support"},
       {AppWeb.Test, "test/support"},
-      {App, "lib/App"},
-      {AppWeb, {:phoenix, "lib/App_web"}}
+      {App, "lib/app"},
+      {AppWeb, {:phoenix, "lib/app_web"}}
     ]
 
     cwd = "."
