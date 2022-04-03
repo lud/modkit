@@ -50,22 +50,41 @@ defmodule Modkit.MountTest do
     # overlap betweed them. The library automatically sort them by common prefix
     mount =
       Mount.new()
-      |> Mount.add({A, "test/support/sub-1"})
-      |> Mount.add({B, "test/support"})
-      |> Mount.add({C, "test/support/sub-1/sub-2"})
-      |> Mount.add({E, "lib/stuff/xxx-1"})
-      |> Mount.add({D, "lib/stuff/xxx-1/xxx-2"})
+      |> Mount.add({A.B.C, "test/support/sub-1"})
+      |> Mount.add({A, "test/support"})
+      |> Mount.add({A.B, "test/support/sub-1/sub-2"})
+      |> Mount.add({X, "lib/stuff/xxx-1"})
+      |> Mount.add({X.Y, "lib/stuff/xxx-1/xxx-2"})
 
     mount |> IO.inspect(label: "mount")
 
-    paths = Enum.map(mount.points, & &1.path)
+    prefixs = Enum.map(mount.points, & &1.prefix)
 
-    assert [
-             "test/support/sub-1/sub-2",
-             "test/support/sub-1",
-             "test/support",
-             "lib/stuff/xxx-1/xxx-2",
-             "lib/stuff/xxx-1"
-           ] == paths
+    assert [X.Y, X, A.B.C, A.B, A] == prefixs
+  end
+
+  test "add mount points with duplicate prefix" do
+    mount =
+      Mount.new()
+      |> Mount.add({A, "test/support/sub-1"})
+      |> Mount.add({A, "test/support/sub-1"})
+
+    assert 1 == length(mount.points)
+
+    assert_raise ArgumentError, ~r/already/, fn ->
+      Mount.new()
+      |> Mount.add({A, "test/support/sub-1"})
+      |> Mount.add({A, "other-path"})
+    end
+  end
+
+  test "add mount points with duplicate path" do
+    # This is actually OK
+    mount =
+      Mount.new()
+      |> Mount.add({AAAA, "test/support/sub-1"})
+      |> Mount.add({BBBB, "test/support/sub-1"})
+
+    assert 2 == length(mount.points)
   end
 end
