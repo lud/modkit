@@ -1,5 +1,5 @@
 defmodule Modkit.MountTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   alias Modkit.Mount
   alias Modkit.Mount.Point
 
@@ -56,8 +56,6 @@ defmodule Modkit.MountTest do
       |> Mount.add({X, "lib/stuff/xxx-1"})
       |> Mount.add({X.Y, "lib/stuff/xxx-1/xxx-2"})
 
-    mount |> IO.inspect(label: "mount")
-
     prefixs = Enum.map(mount.points, & &1.prefix)
 
     assert [X.Y, X, A.B.C, A.B, A] == prefixs
@@ -86,5 +84,21 @@ defmodule Modkit.MountTest do
       |> Mount.add({BBBB, "test/support/sub-1"})
 
     assert 2 == length(mount.points)
+  end
+
+  test "a point can tell if it is a prefix of a splitlist" do
+    assert %Point{
+             path: "lib/a/b/c",
+             prefix: A.B.C,
+             splitfix: ["A", "B", "C"],
+             flavor: :elixir
+           } = point = Point.new({A.B.C, "lib/a/b/c"})
+
+    assert Point.prefix_of?(point, ["A", "B", "C"])
+    assert Point.prefix_of?(point, ["A", "B", "C", "D"])
+
+    refute Point.prefix_of?(point, ["A", "B", "D"])
+    refute Point.prefix_of?(point, ["X", "A", "B"])
+    refute Point.prefix_of?(point, ["X", "A", "B", "C"])
   end
 end

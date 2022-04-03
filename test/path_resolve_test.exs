@@ -1,13 +1,15 @@
 defmodule Modkit.PathResolveTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
+  alias Modkit.Mount
 
   test "module path can be found from mounting point and module name" do
-    mount_points = [
-      {App.Test, "test/support"},
-      {AppWeb.Test, "test/support"},
-      {App, "lib/app"},
-      {AppWeb, {:phoenix, "lib/app_web"}}
-    ]
+    mount_points =
+      Mount.from_points([
+        {App.Test, "test/support"},
+        {AppWeb.Test, "test/support"},
+        {App, "lib/app"},
+        {AppWeb, {:phoenix, "lib/app_web"}}
+      ])
 
     cwd = "."
 

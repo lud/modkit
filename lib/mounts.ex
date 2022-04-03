@@ -19,6 +19,11 @@ defmodule Modkit.Mount do
     add(mount, Point.new(point_spec))
   end
 
+  @spec from_points([Point.t() | Point.point_spec()]) :: t
+  def from_points(points) when is_list(points) do
+    Enum.reduce(points, new(), &add(&2, &1))
+  end
+
   defp insert([p | _] = ps, p),
     # ignore exact duplicates
     do: ps

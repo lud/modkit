@@ -1,8 +1,7 @@
 defmodule Modkit.Mount.Point do
-  @flavors ~w(
-      elixir
-      phoenix
-    )a
+  alias __MODULE__
+
+  @flavors [:elixir, :phoenix]
 
   @enforce_keys [
     # This is the atom prefix name given in configuration
@@ -47,5 +46,10 @@ defmodule Modkit.Mount.Point do
   def new(prefix, flavor, path)
       when is_atom(prefix) and flavor in @flavors and is_binary(path) do
     %__MODULE__{prefix: prefix, flavor: flavor, splitfix: Module.split(prefix), path: path}
+  end
+
+  @spec prefix_of?(t, [binary]) :: boolean()
+  def prefix_of?(%Point{splitfix: splitfix}, modsplit) when is_list(modsplit) do
+    List.starts_with?(modsplit, splitfix)
   end
 end
