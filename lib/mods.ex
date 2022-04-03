@@ -13,16 +13,16 @@ defmodule Modkit.Mod do
 
   @spec build_preferred_path([binary], Point.t(), binary) :: binary
   defp build_preferred_path(modsplit, point, cwd) do
-    modsplit = remove_prefix(modsplit, point.splitfix)
+    modsplit = unprefix(modsplit, point.splitfix)
     sub_path = create_path(modsplit, point.flavor)
     Path.join(:lists.flatten([cwd, point.path, sub_path])) <> ".ex"
   end
 
-  defp remove_prefix([a | modrest], [a | prefrest]) do
-    remove_prefix(modrest, prefrest)
+  defp unprefix([a | modrest], [a | prefrest]) do
+    unprefix(modrest, prefrest)
   end
 
-  defp remove_prefix(modrest, []) do
+  defp unprefix(modrest, []) do
     modrest
   end
 
