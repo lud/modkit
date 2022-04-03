@@ -12,10 +12,18 @@ defmodule Modkit.Mount do
 
   @spec add(t, Point.t() | Point.point_spec()) :: t
   def add(%Mount{points: points} = mount, %Point{} = point) do
-    %Mount{mount | points: [point | points]}
+    %Mount{mount | points: insert(points, point)}
   end
 
   def add(mount, point_spec) do
     add(mount, Point.new(point_spec))
   end
+
+  defp insert([], p), do: [p]
+
+  defp insert([%Point{path: more_precise} = candidate | ps], %Point{path: less_precise} = p)
+       when less_precise < more_precise,
+       do: [candidate | insert(ps, p)]
+
+  defp insert(ps, p), do: [p | ps]
 end

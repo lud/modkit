@@ -45,11 +45,27 @@ defmodule Modkit.MountTest do
              })
   end
 
-  # test "mount points are ordered" do
-  #   # Mount points are resolved in definition order, because there can be an
-  #   # overlap betweed them. The library automatically sort them by common prefix
-  #   mount = Mount.new()
-  #   |> Mount.add({App.Test, "test/support"})
+  test "mount points are ordered" do
+    # Mount points are resolved in definition order, because there can be an
+    # overlap betweed them. The library automatically sort them by common prefix
+    mount =
+      Mount.new()
+      |> Mount.add({A, "test/support/sub-1"})
+      |> Mount.add({B, "test/support"})
+      |> Mount.add({C, "test/support/sub-1/sub-2"})
+      |> Mount.add({E, "lib/stuff/xxx-1"})
+      |> Mount.add({D, "lib/stuff/xxx-1/xxx-2"})
 
-  # end
+    mount |> IO.inspect(label: "mount")
+
+    paths = Enum.map(mount.points, & &1.path)
+
+    assert [
+             "test/support/sub-1/sub-2",
+             "test/support/sub-1",
+             "test/support",
+             "lib/stuff/xxx-1/xxx-2",
+             "lib/stuff/xxx-1"
+           ] == paths
+  end
 end
