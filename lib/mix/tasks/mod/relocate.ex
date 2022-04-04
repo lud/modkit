@@ -10,7 +10,7 @@ defmodule Mix.Tasks.Mod.Relocate do
   import Modkit.Cli
 
   def run(argv) do
-    Mix.Task.run("elixir.compile")
+    Mix.Task.run("app.config")
 
     {opts, args} =
       task(__MODULE__)
