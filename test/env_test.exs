@@ -9,24 +9,6 @@ defmodule Modkit.EnvTest do
   test "a custom mount is available in config" do
     assert %Modkit.Mount{
              points: [
-               %Modkit.Mount.Point{
-                 flavor: :elixir,
-                 path: "lib/modkit",
-                 prefix: Modkit,
-                 splitfix: ["Modkit"]
-               },
-               %Modkit.Mount.Point{
-                 flavor: :elixir,
-                 path: "lib/mix/tasks/mod",
-                 prefix: Mix.Tasks.Mod,
-                 splitfix: ["Mix", "Tasks", "Mod"]
-               }
-             ]
-           } ==
-             Modkit.Config.mount(Modkit.Config.current_project())
-
-    assert %Modkit.Mount{
-             points: [
                %Modkit.Mount.Point{flavor: :elixir, path: "b", prefix: B, splitfix: ["B"]},
                %Modkit.Mount.Point{flavor: :elixir, path: "a", prefix: A, splitfix: ["A"]}
              ]

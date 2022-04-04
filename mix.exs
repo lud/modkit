@@ -32,7 +32,7 @@ defmodule Modkit.MixProject do
     [
       mount: [
         {Modkit, "lib/modkit"},
-        {Modkit.Sample, "lib/modkit/_sample"},
+        {Modkit.Sample, "lib/modkit/sample"},
         {Mix.Tasks, {:mix_task, "lib/mix/tasks"}}
       ]
     ]

@@ -73,12 +73,13 @@ defmodule Modkit.Cli do
   end
 
   defmodule Argument do
-    @enforce_keys [:key, :required]
+    @enforce_keys [:key, :required, :cast]
     defstruct @enforce_keys
 
     @type t :: %__MODULE__{
             required: boolean,
-            key: atom
+            key: atom,
+            cast: (term -> term)
           }
   end
 
@@ -131,7 +132,8 @@ defmodule Modkit.Cli do
 
   defp make_argument(key, conf) do
     required = Keyword.get(conf, :required, false)
-    %Argument{key: key, required: required}
+    cast = Keyword.get(conf, :cast, & &1)
+    %Argument{key: key, required: required, cast: cast}
   end
 
   def parse(%Task{options: opts} = task, argv) do
@@ -282,8 +284,8 @@ defmodule Modkit.Cli do
     throw({:missing_argument, key})
   end
 
-  defp take_args([%{key: key} | schemes], [value | argv], acc) do
-    acc = Map.put(acc, key, value)
+  defp take_args([%{key: key, cast: cast} | schemes], [value | argv], acc) do
+    acc = Map.put(acc, key, cast.(value))
     take_args(schemes, argv, acc)
   end
 

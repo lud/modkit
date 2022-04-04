@@ -129,6 +129,10 @@ defmodule Mix.Tasks.Mod.Relocate do
     end
   end
 
+  defp run_action(%Move{module: mod, split: ["Modkit", "Sample" | _]}) do
+    notice("  ! skipped moving of #{inspect(mod)}")
+  end
+
   defp run_action(%Move{cur_path: from, good_path: to}) do
     File.rename(from, to)
   end
@@ -201,32 +205,11 @@ defmodule Mix.Tasks.Mod.Relocate do
 
   defp compute_dirs(moves) do
     moves
-    |> Enum.reduce(MapSet.new(), &dir_to_create/2)
-    |> MapSet.to_list()
+    |> Enum.map(fn %{good_path: path} -> Path.dirname(path) end)
+    |> Modkit.PathTool.list_create_dirs()
     |> Enum.map(&{:mkdir, &1})
-  end
-
-  defp dir_to_create(%Move{good_path: path}, acc) do
-    dir_to_create(Path.dirname(path), acc)
-  end
-
-  defp dir_to_create(".", acc), do: acc
-
-  defp dir_to_create(path, acc) do
-    cond do
-      File.dir?(path) ->
-        acc
-
-      File.regular?(path) ->
-        abort("cannot create directory #{path}, file exists")
-
-      MapSet.member?(acc, path) ->
-        acc
-
-      :_ ->
-        acc = dir_to_create(Path.dirname(path), acc)
-        MapSet.put(acc, path)
-    end
+  rescue
+    e in ArgumentError -> e |> Exception.message() |> abort()
   end
 
   def print_mount(mount) do
