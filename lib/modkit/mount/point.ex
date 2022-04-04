@@ -1,7 +1,7 @@
 defmodule Modkit.Mount.Point do
   alias __MODULE__
 
-  @flavors [:elixir, :phoenix]
+  @flavors [:elixir, :phoenix, :mix_task]
 
   @enforce_keys [
     # This is the atom prefix name given in configuration

@@ -25,6 +25,10 @@ defmodule Modkit.Mod do
     modrest
   end
 
+  defp create_path(segments, :mix_task) do
+    Enum.map_join(segments, ".", &Macro.underscore/1)
+  end
+
   defp create_path([], _),
     do: []
 

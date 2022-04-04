@@ -29,6 +29,12 @@ defmodule Modkit.MixProject do
   end
 
   defp modkit do
-    [mount: [{Modkit, "lib/modkit"}, {Mix.Tasks.Mod, "lib/mix/tasks/mod"}]]
+    [
+      mount: [
+        {Modkit, "lib/modkit"},
+        {Modkit.Sample, "lib/modkit/_sample"},
+        {Mix.Tasks, {:mix_task, "lib/mix/tasks"}}
+      ]
+    ]
   end
 end
