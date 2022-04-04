@@ -9,13 +9,17 @@ defmodule Modkit.Cli do
   def cyan(content), do: color(content, :cyan)
   def magenta(content), do: color(content, :magenta)
 
-  def abort(iodata) do
-    print(red(iodata))
-    abort()
+  def abort do
+    abort(1)
   end
 
-  def abort do
-    System.halt(1)
+  def abort(iodata) when is_list(iodata) or is_binary(iodata) do
+    print(red(iodata))
+    abort(1)
+  end
+
+  def abort(n) when is_integer(n) do
+    System.halt(n)
     Process.sleep(:infinity)
   end
 
@@ -261,7 +265,11 @@ defmodule Modkit.Cli do
     take_args(schemes, argv, acc)
   end
 
-  defp take_args([], _, acc) do
+  defp take_args([], [extra | _], _) do
+    abort("unexpected argument #{inspect(extra)}")
+  end
+
+  defp take_args([], [], acc) do
     acc
   end
 end

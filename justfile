@@ -1,0 +1,2 @@
+run:
+  mix mod.relocate
