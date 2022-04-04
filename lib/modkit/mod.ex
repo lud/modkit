@@ -33,6 +33,18 @@ defmodule Modkit.Mod do
 
   defp path_segment(segment, :elixir), do: Macro.underscore(segment)
 
+  defp path_segment(segment, :phoenix) do
+    basename = Macro.underscore(segment)
+
+    cond do
+      String.ends_with?(segment, "View") -> ["views", basename]
+      String.ends_with?(segment, "Controller") -> ["controllers", basename]
+      String.ends_with?(segment, "Channel") -> ["channels", basename]
+      String.ends_with?(segment, "Socket") -> ["channels", basename]
+      :other -> basename
+    end
+  end
+
   def list(project \\ Modkit.Config.current_project()) do
     app = Modkit.Config.otp_app(project)
 
