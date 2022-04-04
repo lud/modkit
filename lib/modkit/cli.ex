@@ -113,8 +113,8 @@ defmodule Modkit.Cli do
 
     default =
       case Keyword.fetch(conf, :default) do
-        {:ok, term} -> {true, term}
-        :error -> false
+        {:ok, term} -> {:default, term}
+        :error -> :skip
       end
 
     %Option{key: key, doc: doc, type: type, alias: alias_, default: default, keep: keep}
@@ -134,7 +134,7 @@ defmodule Modkit.Cli do
     %Argument{key: key, required: required}
   end
 
-  def parse(%Task{options: opts, arguments: args} = task, argv) do
+  def parse(%Task{options: opts} = task, argv) do
     strict = Enum.map(opts, fn {key, opt} -> {key, opt_to_switch(opt)} end)
     aliases = Enum.flat_map(opts, fn {_, opt} -> opt_alias(opt) end)
 
@@ -155,52 +155,61 @@ defmodule Modkit.Cli do
     Enum.map(kvs, fn {k, _v} -> danger("invalid option #{k}") end)
   end
 
+  defp usage_args(task) do
+    task.arguments
+    |> Enum.map(fn %Argument{key: key, required: req?} ->
+      mark = if(req?, do: "", else: "*")
+      "<#{key}>#{mark}"
+    end)
+    |> case do
+      [] -> []
+      list -> [" ", list]
+    end
+  end
+
+  defp max_opt_name_width(task) do
+    case map_size(task.options) do
+      0 ->
+        0
+
+      _ ->
+        Enum.reduce(task.options, 0, fn opt, acc ->
+          opt
+          |> elem(1)
+          |> Map.fetch!(:key)
+          |> Atom.to_string()
+          |> String.length()
+          |> max(acc)
+        end)
+    end
+  end
+
+  defp usage_options(task) do
+    max_opt = max_opt_name_width(task) + 3
+
+    task.options
+    |> Enum.map(fn {key, %{alias: ali, doc: doc}} ->
+      [
+        case ali do
+          nil -> "    "
+          _ -> "-#{ali}, "
+        end,
+        "--",
+        String.pad_trailing(Atom.to_string(key), max_opt, " "),
+        doc,
+        ?\n
+      ]
+    end)
+    |> case do
+      [] -> []
+      opts -> ["Options\n\n", opts]
+    end
+  end
+
   defp print_usage(task) do
-    args =
-      task.arguments
-      |> Enum.map(fn %Argument{key: key, required: req?} ->
-        mark = if(req?, do: "", else: "*")
-        "<#{key}>#{mark}"
-      end)
-      |> case do
-        [] -> []
-        list -> [" ", list]
-      end
+    args = usage_args(task)
 
-    max_opt =
-      case map_size(task.options) do
-        0 ->
-          0
-
-        _ ->
-          Enum.reduce(task.options, 0, fn opt, acc ->
-            opt
-            |> elem(1)
-            |> Map.fetch!(:key)
-            |> Atom.to_string()
-            |> String.length()
-            |> max(acc)
-          end) + 3
-      end
-
-    options =
-      task.options
-      |> Enum.map(fn {key, %{alias: ali, doc: doc}} ->
-        [
-          case ali do
-            nil -> "    "
-            _ -> "-#{ali}, "
-          end,
-          "--",
-          String.pad_trailing(Atom.to_string(key), max_opt, " "),
-          doc,
-          ?\n
-        ]
-      end)
-      |> case do
-        [] -> []
-        opts -> ["Options\n\n", opts]
-      end
+    options = usage_options(task)
 
     print([
       "Usage\n",
@@ -222,25 +231,38 @@ defmodule Modkit.Cli do
   defp opt_alias(%{alias: a, key: key}), do: [{a, key}]
 
   defp take_opts(%Task{options: schemes}, opts) do
-    Enum.reduce(schemes, %{}, fn {key, opt}, acc ->
-      case opt.keep do
-        true ->
-          list = opts |> Enum.filter(fn {k, _} -> k == key end) |> Enum.map(&elem(&1, 1))
-          Map.put(acc, key, list)
+    Enum.reduce(schemes, %{}, fn scheme, acc -> collect_opt(scheme, opts, acc) end)
+  end
 
-        false ->
-          case Keyword.fetch(opts, key) do
-            :error ->
-              case opt.default do
-                {true, v} -> Map.put(acc, key, v)
-                false -> acc
-              end
+  defp collect_opt({key, scheme}, opts, acc) do
+    case scheme.keep do
+      true ->
+        list = collect_list_option(opts, key)
+        Map.put(acc, key, list)
 
-            {:ok, v} ->
-              Map.put(acc, key, v)
-          end
-      end
-    end)
+      false ->
+        case get_opt_value(opts, key, scheme.default) do
+          {:ok, value} -> Map.put(acc, key, value)
+          :skip -> acc
+        end
+    end
+  end
+
+  def get_opt_value(opts, key, default) do
+    case Keyword.fetch(opts, key) do
+      :error ->
+        case default do
+          {:default, v} -> {:ok, v}
+          :skip -> :skip
+        end
+
+      {:ok, v} ->
+        {:ok, v}
+    end
+  end
+
+  defp collect_list_option(opts, key) do
+    opts |> Enum.filter(fn {k, _} -> k == key end) |> Enum.map(&elem(&1, 1))
   end
 
   defp take_args(%Task{arguments: schemes} = task, args) do
@@ -256,7 +278,7 @@ defmodule Modkit.Cli do
     acc
   end
 
-  defp take_args([%{required: true, key: key} | _], [], acc) do
+  defp take_args([%{required: true, key: key} | _], [], _acc) do
     throw({:missing_argument, key})
   end
 

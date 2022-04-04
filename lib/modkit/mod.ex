@@ -1,5 +1,4 @@
 defmodule Modkit.Mod do
-  alias Modkit.Mount
   alias Modkit.Mount.Point
 
   def get_preferred_path(module, mount) when is_atom(module) do

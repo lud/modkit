@@ -3,13 +3,6 @@ defmodule Modkit.MountTest do
   alias Modkit.Mount
   alias Modkit.Mount.Point
 
-  mount_points = [
-    {App.Test, "test/support"},
-    {AppWeb.Test, "test/support"},
-    {App, "lib/app"},
-    {AppWeb, {:phoenix, "lib/app_web"}}
-  ]
-
   test "a point can be defined in the configuration" do
     assert %Point{
              path: "test/support",

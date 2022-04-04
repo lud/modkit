@@ -14,6 +14,12 @@ defmodule Modkit.EnvTest do
                  path: "lib/modkit",
                  prefix: Modkit,
                  splitfix: ["Modkit"]
+               },
+               %Modkit.Mount.Point{
+                 flavor: :elixir,
+                 path: "lib/mix/tasks/mod",
+                 prefix: Mix.Tasks.Mod,
+                 splitfix: ["Mix", "Tasks", "Mod"]
                }
              ]
            } ==

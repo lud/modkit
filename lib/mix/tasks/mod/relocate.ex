@@ -46,8 +46,7 @@ defmodule Mix.Tasks.Mod.Relocate do
       |> Enum.reject(&is_protocol_impl?/1)
       |> map_filter_ok(&build_move(&1, mount, cwd))
       |> resolve_multis()
-      |> Enum.reject(&in_good_path?/1)
-      |> Enum.reject(&target_file_exists?/1)
+      |> Enum.reject(&(in_good_path?(&1) or target_file_exists?(&1)))
 
     dir_actions = compute_dirs(moves)
 
@@ -171,14 +170,12 @@ defmodule Mix.Tasks.Mod.Relocate do
 
   defp parent_mod_or_empty(moves) do
     moves
-    # fine a move that is a common prefix of all others
     |> Enum.find(fn %{split: split} ->
       Enum.all?(moves, fn %{split: submodule} -> List.starts_with?(submodule, split) end)
     end)
     |> case do
       nil ->
-        modules =
-          Enum.map(moves, & &1.module) |> Enum.map(&" * #{inspect(&1)}") |> Enum.join("\n")
+        modules = Enum.map_join(moves, "\n", &" * #{inspect(&1.module)}")
 
         warn("multiple modules defined in #{moves |> hd |> Map.get(:cur_path)}:\n#{modules}")
         []

@@ -28,7 +28,7 @@ defmodule Modkit.Mount do
     # ignore exact duplicates
     do: ps
 
-  defp insert([%Point{prefix: pref, path: pset} | _] = ps, %Point{prefix: pref, path: pwant}) do
+  defp insert([%Point{prefix: pref, path: pset} | _], %Point{prefix: pref, path: pwant}) do
     raise ArgumentError,
           "cannot mount #{inspect(pref)} at #{inspect(pwant)} as it is already mounted at #{inspect(pset)}"
   end
