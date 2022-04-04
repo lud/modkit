@@ -7,7 +7,8 @@ defmodule Modkit.MixProject do
       version: "0.1.0",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      modkit: modkit()
     ]
   end
 
@@ -25,5 +26,9 @@ defmodule Modkit.MixProject do
       {:mix_version, "~> 1.3", runtime: false},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false}
     ]
+  end
+
+  defp modkit do
+    [mount: [{Modkit, "lib/modkit"}, {Mix.Tasks.Mod, "lib/mix/tasks/mod"}]]
   end
 end

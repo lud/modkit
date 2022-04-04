@@ -53,6 +53,3 @@ defmodule Modkit.Mount.Point do
     List.starts_with?(modsplit, splitfix)
   end
 end
-
-defmodule Modkit.Dup do
-end
