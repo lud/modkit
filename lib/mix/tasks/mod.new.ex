@@ -15,7 +15,7 @@ defmodule Mix.Tasks.Mod.New do
         doc: "use GenServer and define base functions",
         default: false
       )
-      |> option(:sup, :boolean,
+      |> option(:supervisor, :boolean,
         alias: :s,
         doc: "use Supervisor and define base functions",
         default: false
@@ -37,7 +37,15 @@ defmodule Mix.Tasks.Mod.New do
       |> check_exclusive_opts()
       |> add_path_opt(args.module)
 
-    parts = Enum.reduce(opts, %{uses: [], attrs: [], apis: [], impls: []}, &collect_parts/2)
+    parts_init = %{uses: [], attrs: [], apis: [], impls: []}
+
+    parts =
+      opts
+      |> Map.take([:gen_server, :supervisor])
+      |> IO.inspect(label: "optsreduce")
+      |> Enum.filter(&elem(&1, 1))
+      |> Keyword.keys()
+      |> Enum.reduce(parts_init, &collect_parts/2)
 
     code =
       assemble_parts(args.module, parts)
@@ -49,8 +57,6 @@ defmodule Mix.Tasks.Mod.New do
   end
 
   defp write_code(%{path: path, overwrite: over?}, code) do
-    File.exists?(path) |> IO.inspect(label: "File.exists?(path)")
-
     if File.exists?(path) and not over? do
       abort("file exists: #{path}")
     else
@@ -82,7 +88,7 @@ defmodule Mix.Tasks.Mod.New do
     end
   end
 
-  def collect_parts({:gen_server, true}, parts) do
+  def collect_parts(:gen_server, parts) do
     parts
     |> add_part(:uses, "use GenServer")
     |> add_part(:attrs, "@gen_opts ~w(name timeout debug spawn_opt hibernate_after)a")
@@ -95,13 +101,31 @@ defmodule Mix.Tasks.Mod.New do
     |> add_part(:apis, """
       @impl GenServer
       def init(opts) do
-        GenServer.start_link(__MODULE__, opts)
+        {:ok, opts}
       end
     """)
   end
 
-  def collect_parts(_, parts) do
+  def collect_parts(:supervisor, parts) do
     parts
+    |> add_part(:uses, "use Supervisor")
+    |> add_part(:attrs, "@gen_opts ~w(name)a")
+    |> add_part(:apis, """
+      def start_link(opts) do
+        {gen_opts, opts} = Keyword.split(opts, @gen_opts)
+        Supervisor.start_link(__MODULE__, opts, gen_opts)
+      end
+    """)
+    |> add_part(:apis, """
+      @impl Supervisor
+      def init(_init_arg) do
+        children = [
+          {Worker, key: :value}
+        ]
+
+        Supervisor.init(children, strategy: :one_for_one)
+      end
+    """)
   end
 
   defp add_part(parts, group, code) do
