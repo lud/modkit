@@ -10,6 +10,8 @@ defmodule Mix.Tasks.Mod.Relocate do
   import Modkit.Cli
 
   def run(argv) do
+    Mix.Task.run("elixir.compile")
+
     {opts, args} =
       task(__MODULE__)
       |> option(:prompt, :boolean,
