@@ -4,7 +4,6 @@ run:
 reinstall:
   yes | mix archive.uninstall modkit
   yes | mix archive.install
-  mix mod.relocate
 
 uninstall:
   yes | mix archive.uninstall modkit
