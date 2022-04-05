@@ -22,7 +22,7 @@ defmodule Mix.Tasks.Mod.New do
       )
       |> option(:path, :string,
         alias: :p,
-        doc: "The path of the modue to write. Unnecessary if the module prefix is mounted."
+        doc: "The path of the module to write. Unnecessary if the module prefix is mounted."
       )
       |> option(:overwrite, :boolean,
         alias: :o,
