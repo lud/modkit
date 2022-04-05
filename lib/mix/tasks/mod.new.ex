@@ -42,7 +42,6 @@ defmodule Mix.Tasks.Mod.New do
     parts =
       opts
       |> Map.take([:gen_server, :supervisor])
-      |> IO.inspect(label: "optsreduce")
       |> Enum.filter(&elem(&1, 1))
       |> Keyword.keys()
       |> Enum.reduce(parts_init, &collect_parts/2)

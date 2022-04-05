@@ -8,6 +8,7 @@ defmodule Modkit.Cli do
   def blue(content), do: color(content, :blue)
   def cyan(content), do: color(content, :cyan)
   def magenta(content), do: color(content, :magenta)
+  def bright(content), do: [IO.ANSI.bright(), content, IO.ANSI.normal()]
 
   def abort do
     abort(1)
@@ -190,28 +191,18 @@ defmodule Modkit.Cli do
     max_opt = max_opt_name_width(task) + 1
 
     columns = io_columns()
-    columns |> IO.inspect(label: "columns")
 
     # add space for the aliases, the "--" and the column gap
     left_blank = max_opt + 7
 
-    left_blank |> IO.inspect(label: "left_bl")
-    (columns - left_blank) |> IO.inspect(label: "columns - left_blank")
-    # plus
-
-    left_blank |> IO.inspect(label: "left_blank")
-
     task.options
     |> Enum.map(fn {key, %{alias: ali, doc: doc}} ->
-      IO.puts("------------------")
-
       [
         case ali do
           nil -> "    "
           _ -> "-#{ali}, "
         end,
-        "--",
-        String.pad_trailing(Atom.to_string(key), max_opt, " "),
+        bright(["--", String.pad_trailing(Atom.to_string(key), max_opt, " ")]),
         format_opt_doc(doc, left_blank, columns),
         ?\n
       ]
@@ -231,9 +222,6 @@ defmodule Modkit.Cli do
 
   defp format_opt_doc(doc, pad, columns) do
     max_width = columns - pad
-    pad |> IO.inspect(label: "pad")
-    columns |> IO.inspect(label: "columns")
-    max_width |> IO.inspect(label: "max_width")
     padding = String.duplicate(" ", pad - 1)
 
     doc
