@@ -19,14 +19,17 @@ defmodule Modkit.Cli do
   end
 
   def abort(n) when is_integer(n) do
-    System.halt(n)
-    Process.sleep(:infinity)
+    halt(n)
   end
 
   def success_stop(iodata) do
     success(iodata)
-    System.halt()
-    Process.sleep(:infinity)
+    halt(0)
+  end
+
+  def halt(n) do
+    # spawn(fn -> System.halt(n) end)
+    Process.sleep(99999)
   end
 
   def success(iodata) do
@@ -57,52 +60,63 @@ defmodule Modkit.Cli do
     inspect(term)
   end
 
-  defmodule Option do
-    @enforce_keys [:key, :doc, :type, :alias, :default, :keep]
-    defstruct @enforce_keys
+  require Record
 
-    @type vtype :: :integer | :float | :string | :count | :boolean
-    @type t :: %__MODULE__{
+  Record.defrecordp(:__opt, :option,
+    key: nil,
+    doc: nil,
+    alias: nil,
+    default: nil,
+    keep: nil,
+    type: nil
+  )
+
+  Record.defrecordp(:__arg, :argument,
+    key: nil,
+    required: true,
+    cast: nil
+  )
+
+  Record.defrecordp(:__task, :argument,
+    arguments: [],
+    options: [],
+    module: nil
+  )
+
+  @type option ::
+          record(:__opt,
             key: atom,
-            doc: binary,
-            type: vtype,
+            doc: String.t(),
             alias: atom,
-            default: term,
-            keep: boolean
-          }
-  end
-
-  defmodule Argument do
-    @enforce_keys [:key, :required, :cast]
-    defstruct @enforce_keys
-
-    @type t :: %__MODULE__{
-            required: boolean,
+            default: {:default, term} | :skip,
+            keep: boolean,
+            type: option_type
+          )
+  @type argument ::
+          record(
+            :__arg,
             key: atom,
+            required: boolean,
             cast: (term -> term)
-          }
-  end
-
-  defmodule Task do
-    @enforce_keys [:arguments, :options, :module]
-    defstruct @enforce_keys
-
-    @type t :: %__MODULE__{
-            arguments: [Argument.t()],
-            options: %{atom => Option.t()},
+          )
+  @type task ::
+          record(
+            :__task,
+            arguments: [argument],
+            options: %{atom => option},
             module: module
-          }
-  end
+          )
+  @type option_type :: :integer | :float | :string | :count | :boolean
 
-  def task(module) when is_atom(module), do: %Task{module: module, arguments: [], options: %{}}
+  def task(module) when is_atom(module), do: __task(module: module, arguments: [], options: %{})
 
   @type option_opt :: {:alias, atom} | {:doc, String.t()} | {:default, term}
   @type opt_conf :: [option_opt]
 
-  @spec option(Task.t(), key :: atom, Option.vtype(), opt_conf) :: Task.t()
-  def option(%Task{options: opts} = task, key, type, conf) do
+  @spec option(task, key :: atom, Option.vtype(), opt_conf) :: task
+  def option(__task(options: opts) = task, key, type, conf) do
     opt = make_option(key, type, conf)
-    %Task{task | options: Map.put(opts, key, opt)}
+    __task(task, options: Map.put(opts, key, opt))
   end
 
   defp make_option(key, type, conf) when is_atom(key) do
@@ -118,25 +132,25 @@ defmodule Modkit.Cli do
         :error -> :skip
       end
 
-    %Option{key: key, doc: doc, type: type, alias: alias_, default: default, keep: keep}
+    __opt(key: key, doc: doc, type: type, alias: alias_, default: default, keep: keep)
   end
 
   @type argument_opt :: {:required, boolean()}
   @type arg_conf :: [argument_opt]
 
-  @spec argument(Task.t(), key :: atom, arg_conf) :: Task.t()
-  def argument(%Task{arguments: args} = task, key, conf) do
+  @spec argument(task, key :: atom, arg_conf) :: task
+  def argument(__task(arguments: args) = task, key, conf) do
     arg = make_argument(key, conf)
-    %Task{task | arguments: args ++ [arg]}
+    __task(task, arguments: args ++ [arg])
   end
 
   defp make_argument(key, conf) do
     required = Keyword.get(conf, :required, false)
     cast = Keyword.get(conf, :cast, & &1)
-    %Argument{key: key, required: required, cast: cast}
+    __arg(key: key, required: required, cast: cast)
   end
 
-  def parse(%Task{options: opts} = task, argv) do
+  def parse(__task(options: opts) = task, argv) do
     strict = Enum.map(opts, fn {key, opt} -> {key, opt_to_switch(opt)} end)
     aliases = Enum.flat_map(opts, fn {_, opt} -> opt_alias(opt) end)
 
@@ -159,7 +173,7 @@ defmodule Modkit.Cli do
 
   defp usage_args(task) do
     task.arguments
-    |> Enum.map(fn %Argument{key: key, required: req?} ->
+    |> Enum.map(fn __arg(key: key, required: req?) ->
       mark = if(req?, do: "", else: "*")
       "<#{key}>#{mark}"
     end)
@@ -227,23 +241,23 @@ defmodule Modkit.Cli do
     ])
   end
 
-  defp opt_to_switch(%{keep: true, type: t}), do: [t, :keep]
-  defp opt_to_switch(%{keep: false, type: t}), do: t
-  defp opt_alias(%{alias: nil}), do: []
-  defp opt_alias(%{alias: a, key: key}), do: [{a, key}]
+  defp opt_to_switch(__opt(keep: true, type: t)), do: [t, :keep]
+  defp opt_to_switch(__opt(keep: false, type: t)), do: t
+  defp opt_alias(__opt(alias: nil)), do: []
+  defp opt_alias(__opt(alias: a, key: key)), do: [{a, key}]
 
-  defp take_opts(%Task{options: schemes}, opts) do
+  defp take_opts(__task(options: schemes), opts) do
     Enum.reduce(schemes, %{}, fn scheme, acc -> collect_opt(scheme, opts, acc) end)
   end
 
   defp collect_opt({key, scheme}, opts, acc) do
-    case scheme.keep do
+    case __opt(scheme, :keep) do
       true ->
         list = collect_list_option(opts, key)
         Map.put(acc, key, list)
 
       false ->
-        case get_opt_value(opts, key, scheme.default) do
+        case get_opt_value(opts, key, __opt(scheme, :default)) do
           {:ok, value} -> Map.put(acc, key, value)
           :skip -> acc
         end
@@ -267,7 +281,7 @@ defmodule Modkit.Cli do
     opts |> Enum.filter(fn {k, _} -> k == key end) |> Enum.map(&elem(&1, 1))
   end
 
-  defp take_args(%Task{arguments: schemes} = task, args) do
+  defp take_args(__task(arguments: schemes) = task, args) do
     take_args(schemes, args, %{})
   catch
     {:missing_argument, key} ->
@@ -276,16 +290,16 @@ defmodule Modkit.Cli do
       abort("missing required argument <#{Atom.to_string(key)}>")
   end
 
-  defp take_args([%{required: false} | _], [], acc) do
+  defp take_args([__arg(required: false) | _], [], acc) do
     acc
   end
 
-  defp take_args([%{required: true, key: key} | _], [], _acc) do
+  defp take_args([__arg(required: true, key: key) | _], [], _acc) do
     throw({:missing_argument, key})
   end
 
-  defp take_args([%{key: key, cast: cast} | schemes], [value | argv], acc) do
-    acc = Map.put(acc, key, cast.(value))
+  defp take_args([__arg(key: key, cast: cast) | schemes], [value | argv], acc) do
+    acc = Map.put(acc, key, call_cast(cast, value))
     take_args(schemes, argv, acc)
   end
 
@@ -296,4 +310,7 @@ defmodule Modkit.Cli do
   defp take_args([], [], acc) do
     acc
   end
+
+  defp call_cast(nil, value), do: value
+  defp call_cast(cast, value) when is_function(cast, 1), do: cast.(value)
 end

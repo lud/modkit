@@ -146,13 +146,13 @@ defmodule Mix.Tasks.Mod.Relocate do
   end
 
   defp build_move(module, mount, cwd) do
-    case Modkit.Mod.get_preferred_path(module, mount) do
+    case Modkit.Mod.preferred_path(module, mount) do
       {:ok, good_path} ->
         {:ok,
          %Move{
            module: module,
            good_path: good_path,
-           cur_path: Modkit.Mod.get_current_path(module, cwd),
+           cur_path: Modkit.Mod.current_path(module, cwd),
            split: Module.split(module)
          }}
 

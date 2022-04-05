@@ -1,7 +1,7 @@
 defmodule Modkit.Mod do
   alias Modkit.Mount.Point
 
-  def get_preferred_path(module, mount) when is_atom(module) do
+  def preferred_path(module, mount) when is_atom(module) do
     modsplit = Module.split(module)
 
     case Enum.find(mount.points, &Point.prefix_of?(&1, modsplit)) do
@@ -65,7 +65,7 @@ defmodule Modkit.Mod do
     end
   end
 
-  def get_current_path(module, relative_to \\ File.cwd!()) do
+  def current_path(module, relative_to \\ File.cwd!()) do
     source = Keyword.fetch!(module.module_info(:compile), :source) |> List.to_string()
     Path.relative_to(source, relative_to)
   end

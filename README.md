@@ -1,6 +1,7 @@
 # Modkit
 
-**TODO: Add description**
+This library contains a small set of too
+
 
 ## Installation
 

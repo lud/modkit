@@ -12,14 +12,14 @@ defmodule Modkit.PathResolveTest do
       ])
 
     assert {:ok, "test/support.ex"} ==
-             Modkit.Mod.get_preferred_path(App.Test, mount_points)
+             Modkit.Mod.preferred_path(App.Test, mount_points)
 
     assert {:ok, "test/support/one.ex"} ==
-             Modkit.Mod.get_preferred_path(App.Test.One, mount_points)
+             Modkit.Mod.preferred_path(App.Test.One, mount_points)
 
     assert {:ok, "test/support/two.ex"} ==
-             Modkit.Mod.get_preferred_path(App.Test.Two, mount_points)
+             Modkit.Mod.preferred_path(App.Test.Two, mount_points)
 
-    assert {:error, :no_mount_point} = Modkit.Mod.get_preferred_path(XXX, mount_points)
+    assert {:error, :no_mount_point} = Modkit.Mod.preferred_path(XXX, mount_points)
   end
 end

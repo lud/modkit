@@ -79,7 +79,7 @@ defmodule Mix.Tasks.Mod.New do
     project = Modkit.Config.current_project()
     mount = Modkit.Config.mount(project)
 
-    case Modkit.Mod.get_preferred_path(module, mount) do
+    case Modkit.Mod.preferred_path(module, mount) do
       {:error, :no_mount_point} ->
         abort("The --path option is required when the module prefix is not mounted.")
 
