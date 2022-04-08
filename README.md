@@ -17,5 +17,8 @@ def deps do
 end
 ```
 
+## Usage
 
+<!-- commands-doc-start -->
+<!-- commands-doc-end -->
 

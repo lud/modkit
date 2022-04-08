@@ -26,7 +26,7 @@ defmodule Mix.Tasks.Mod.New do
       )
       |> option(:overwrite, :boolean,
         alias: :o,
-        doc: "Overwrite the file if it exists",
+        doc: "Overwrite the file if it exists. Always prompt.",
         default: false
       )
       |> argument(:module, required: true, cast: &Module.concat([&1]))
@@ -56,10 +56,22 @@ defmodule Mix.Tasks.Mod.New do
   end
 
   defp write_code(%{path: path, overwrite: over?}, code) do
-    if File.exists?(path) and not over? do
-      abort("file exists: #{path}")
-    else
+    if can_write?(path, over?) do
       File.write(path, code)
+    else
+      abort("file exists: #{path}")
+    end
+  end
+
+  defp can_write?(path, prompt?) do
+    if File.exists?(path) do
+      if prompt? do
+        Mix.Shell.IO.yes?("Overwrite file #{path}?", default: :no)
+      else
+        false
+      end
+    else
+      true
     end
   end
 
