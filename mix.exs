@@ -4,7 +4,7 @@ defmodule Modkit.MixProject do
   def project do
     [
       app: :modkit,
-      version: "0.1.0",
+      version: "0.1.1",
       description: "A set of tool to work with Elixir modules files.",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
