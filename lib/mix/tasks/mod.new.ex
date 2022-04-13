@@ -57,9 +57,19 @@ defmodule Mix.Tasks.Mod.New do
 
   defp write_code(%{path: path, overwrite: over?}, code) do
     if can_write?(path, over?) do
-      File.write(path, code)
+      :ok = ensure_dir(Path.dirname(path))
+      File.write!(path, code)
     else
       abort("file exists: #{path}")
+    end
+  end
+
+  defp ensure_dir(path) do
+    if File.dir?(path) do
+      :ok
+    else
+      ensure_dir(Path.dirname(path))
+      File.mkdir!(path)
     end
   end
 
