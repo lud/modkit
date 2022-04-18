@@ -208,7 +208,6 @@ defmodule Modkit.Cli do
         end,
         bright(format_long_opt(key, max_opt)),
         format_opt_doc("#{type}. #{doc}", left_blank, columns),
-        ?\n,
         ?\n
       ]
     end)
