@@ -200,14 +200,15 @@ defmodule Modkit.Cli do
     left_blank = max_opt + 7
 
     task.options
-    |> Enum.map(fn {key, %{alias: ali, doc: doc}} ->
+    |> Enum.map(fn {key, %{alias: ali, doc: doc, type: type}} ->
       [
         case ali do
           nil -> "    "
           _ -> "-#{ali}, "
         end,
-        bright(["--", String.pad_trailing(Atom.to_string(key), max_opt, " ")]),
-        format_opt_doc(doc, left_blank, columns),
+        bright(format_long_opt(key, max_opt)),
+        format_opt_doc("#{type}. #{doc}", left_blank, columns),
+        ?\n,
         ?\n
       ]
     end)
@@ -215,6 +216,11 @@ defmodule Modkit.Cli do
       [] -> []
       opts -> ["Options:\n\n", opts]
     end
+  end
+
+  defp format_long_opt(key, max_opt) do
+    name = key |> Atom.to_string() |> String.replace("_", "-")
+    ["--", String.pad_trailing(name, max_opt, " ")]
   end
 
   defp io_columns do
