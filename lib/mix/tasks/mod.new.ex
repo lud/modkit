@@ -9,7 +9,7 @@ defmodule Mix.Tasks.Mod.New do
     Mix.Task.run("app.config")
 
     {opts, args} =
-      task(__MODULE__)
+      command(__MODULE__)
       |> option(:gen_server, :boolean,
         alias: :g,
         doc: "use GenServer and define base functions",

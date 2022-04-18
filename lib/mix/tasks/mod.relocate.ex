@@ -13,7 +13,7 @@ defmodule Mix.Tasks.Mod.Relocate do
     Mix.Task.run("app.config")
 
     {opts, args} =
-      task(__MODULE__)
+      command(__MODULE__)
       |> option(:prompt, :boolean,
         alias: :p,
         doc: "Prompt to move the files. Takes precedence over --force",
