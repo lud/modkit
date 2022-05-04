@@ -163,7 +163,7 @@ defmodule Mix.Tasks.Mod.New do
       "defmodule #{inspect(module)} do",
       ~S(
       @moduledoc """
-      Write a little description of the module …
+      TODO Start documenting the module by writing a short description of its purpose.
       """
       ),
       uses,
