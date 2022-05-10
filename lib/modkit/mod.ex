@@ -26,7 +26,7 @@ defmodule Modkit.Mod do
   end
 
   defp create_path(segments, :mix_task) do
-    Enum.map_join(segments, ".", &Macro.underscore/1)
+    Enum.map_join(segments, ".", &Modkit.PathTool.to_snake/1)
   end
 
   defp create_path([], _),
@@ -35,10 +35,10 @@ defmodule Modkit.Mod do
   defp create_path([segment | rest], flavor),
     do: [path_segment(segment, flavor) | create_path(rest, flavor)]
 
-  defp path_segment(segment, :elixir), do: Macro.underscore(segment)
+  defp path_segment(segment, :elixir), do: Modkit.PathTool.to_snake(segment)
 
   defp path_segment(segment, :phoenix) do
-    basename = Macro.underscore(segment)
+    basename = Modkit.PathTool.to_snake(segment)
 
     cond do
       String.ends_with?(segment, "View") -> ["views", basename]

@@ -26,7 +26,7 @@ defmodule Modkit.Config do
       |> :lists.reverse()
       |> Module.concat()
 
-    mount_path = Path.join(base_path, Macro.underscore(app_mod))
+    mount_path = Path.join(base_path, Modkit.PathTool.to_snake(app_mod))
     [{app_mod, mount_path}]
   end
 
