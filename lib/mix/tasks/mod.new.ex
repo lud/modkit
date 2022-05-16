@@ -93,10 +93,12 @@ defmodule Mix.Tasks.Mod.New do
     opts
   end
 
-  defp add_path_opt(%{path: path}, _),
-    do: path
+  defp add_path_opt(%{path: path} = opts, _) when is_binary(path),
+    do: opts
 
   defp add_path_opt(opts, module) do
+    # Use the preferred path if mounted or abort
+
     project = Modkit.Config.current_project()
     mount = Modkit.Config.mount(project)
 
