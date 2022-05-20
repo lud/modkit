@@ -8,26 +8,43 @@ defmodule Modkit.Config do
   end
 
   def mount(project) do
-    project
-    |> project_get([:modkit, :mount], default_mount(project))
-    |> Modkit.Mount.from_points()
+    mount = project_get(project, [:modkit, :mount], nil) || default_mount(project)
+
+    Modkit.Mount.from_points(mount)
+  end
+
+  defp main_module_from_current_project() do
+    Mix.Project.get!()
+    |> Module.split()
+    |> :lists.reverse()
+    |> then(fn ["MixProject" | rest] -> rest end)
+    |> :lists.reverse()
+    |> Module.concat()
   end
 
   defp default_mount(project) do
-    [base_path | _] = project_get(project, :elixirc_paths)
+    app_mod = main_module_from_current_project()
 
-    app_mod =
-      Mix.Project.get!()
-      |> Module.split()
-      |> :lists.reverse()
-      |> case do
-        ["MixProject" | rest] -> rest
-      end
-      |> :lists.reverse()
-      |> Module.concat()
+    [first_path | _] = elixirc_paths = project_get(project, :elixirc_paths)
 
-    mount_path = Path.join(base_path, Modkit.PathTool.to_snake(app_mod))
-    [{app_mod, mount_path}]
+    base_path = Enum.find(elixirc_paths, first_path, &(&1 == "lib"))
+
+    # here we use the OTP app instead of the to_sname/1 function because the
+    # apps generated with `mix new` will create that path by default. The module
+    # to snake path conversion does not mirror exactly the snake to module
+    # conversion.
+    app_code_path =
+      Path.join(
+        base_path,
+        project |> otp_app() |> Atom.to_string() |> Modkit.PathTool.to_snake()
+      )
+
+    mix_tasks_path = Path.join(base_path, "mix/tasks")
+
+    [
+      {app_mod, app_code_path},
+      {Mix.Tasks, {:mix_task, mix_tasks_path}}
+    ]
   end
 
   # -- Data reader ------------------------------------------------------------

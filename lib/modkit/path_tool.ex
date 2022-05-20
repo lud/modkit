@@ -40,8 +40,8 @@ defmodule Modkit.PathTool do
     end
   end
 
-  # This is a copy of `Macro.underscore/1` but that does not handle dots, and do
-  # not split on digits.
+  # This is a copy of `Macro.underscore/1` but that does not add an underscore
+  # after digits, and does not handle dots.
   defp underscore(atom) when is_atom(atom) do
     "Elixir." <> rest = Atom.to_string(atom)
     underscore(rest)
