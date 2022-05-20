@@ -1,11 +1,12 @@
 run:
-  mix mod.relocate
+    mix mod.relocate
 
 install: reinstall
 
-reinstall:
-  yes | mix archive.uninstall modkit
-  yes | mix archive.install
+reinstall: uninstall
+    mix deps.get
+    mix archive.install --force
 
 uninstall:
-  yes | mix archive.uninstall modkit
+    rm -vf *ez
+    mix archive.uninstall modkit --force
