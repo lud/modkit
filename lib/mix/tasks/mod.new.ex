@@ -20,6 +20,11 @@ defmodule Mix.Tasks.Mod.New do
         doc: "use Supervisor and define base functions",
         default: false
       )
+      |> option(:mix_task, :boolean,
+        alias: :t,
+        doc: "create a new mix task",
+        default: false
+      )
       |> option(:path, :string,
         alias: :p,
         doc: "The path of the module to write. Unnecessary if the module prefix is mounted."
@@ -37,11 +42,11 @@ defmodule Mix.Tasks.Mod.New do
       |> check_exclusive_opts()
       |> add_path_opt(args.module)
 
-    parts_init = %{uses: [], attrs: [], apis: [], impls: []}
+    parts_init = %{uses: [], attrs: [], apis: [], impls: [], top_docs: []}
 
     parts =
       opts
-      |> Map.take([:gen_server, :supervisor])
+      |> Map.take([:gen_server, :supervisor, :mix_task])
       |> Enum.filter(&elem(&1, 1))
       |> Keyword.keys()
       |> Enum.reduce(parts_init, &collect_parts/2)
@@ -85,12 +90,33 @@ defmodule Mix.Tasks.Mod.New do
     end
   end
 
-  defp check_exclusive_opts(%{gen_server: true, supervisor: true}) do
-    abort("--gen-server and --supervisor are mutually exclusive")
-  end
-
   defp check_exclusive_opts(opts) do
-    opts
+    exclusive = %{
+      gen_server: "--gen-server",
+      supervisor: "--supervisor",
+      mix_task: "--mix-task"
+    }
+
+    provided =
+      opts
+      |> Map.take(Map.keys(exclusive))
+      |> Map.filter(fn {_, enabled} -> enabled == true end)
+      |> Map.keys()
+
+    case provided do
+      [] ->
+        opts
+
+      [_single] ->
+        opts
+
+      [top | rest] ->
+        rest
+        |> Enum.map(&Map.fetch!(exclusive, &1))
+        |> Enum.intersperse(", ")
+        |> Kernel.++([" and ", Map.fetch!(exclusive, top), " are mutually exclusive"])
+        |> abort
+    end
   end
 
   defp add_path_opt(%{path: path} = opts, _) when is_binary(path),
@@ -143,21 +169,29 @@ defmodule Mix.Tasks.Mod.New do
     |> String.trim()
   end
 
+  defp default_moduledoc do
+    ~S(
+      @moduledoc """
+      TODO Start documenting the module by writing a short description of its purpose.\
+      """
+    )
+  end
+
   def collect_parts(:gen_server, parts) do
     parts
     |> add_part(:uses, "use GenServer")
     |> add_part(:attrs, "@gen_opts ~w(name timeout debug spawn_opt hibernate_after)a")
     |> add_part(:apis, """
-      def start_link(opts) do
-        {gen_opts, opts} = Keyword.split(opts, @gen_opts)
-        GenServer.start_link(__MODULE__, opts, gen_opts)
-      end
+        def start_link(opts) do
+          {gen_opts, opts} = Keyword.split(opts, @gen_opts)
+          GenServer.start_link(__MODULE__, opts, gen_opts)
+        end
     """)
     |> add_part(:apis, """
-      @impl GenServer
-      def init(opts) do
-        {:ok, opts}
-      end
+        @impl GenServer
+        def init(opts) do
+          {:ok, opts}
+        end
     """)
   end
 
@@ -166,20 +200,38 @@ defmodule Mix.Tasks.Mod.New do
     |> add_part(:uses, "use Supervisor")
     |> add_part(:attrs, "@gen_opts ~w(name)a")
     |> add_part(:apis, """
-      def start_link(opts) do
-        {gen_opts, opts} = Keyword.split(opts, @gen_opts)
-        Supervisor.start_link(__MODULE__, opts, gen_opts)
-      end
+        def start_link(opts) do
+          {gen_opts, opts} = Keyword.split(opts, @gen_opts)
+          Supervisor.start_link(__MODULE__, opts, gen_opts)
+        end
     """)
     |> add_part(:apis, """
-      @impl Supervisor
-      def init(_init_arg) do
-        children = [
-          {Worker, key: :value}
-        ]
+        @impl Supervisor
+        def init(_init_arg) do
+          children = [
+            {Worker, key: :value}
+          ]
 
-        Supervisor.init(children, strategy: :one_for_one)
-      end
+          Supervisor.init(children, strategy: :one_for_one)
+        end
+    """)
+  end
+
+  defmodule Mix.Tasks.Echo do
+  end
+
+  def collect_parts(:mix_task, parts) do
+    parts
+    |> add_part(:top_docs, [
+      default_moduledoc(),
+      ~S(@shortdoc "TODO short description of the task")
+    ])
+    |> add_part(:uses, "use Mix.Task")
+    |> add_part(:apis, """
+        @impl Mix.Task
+        def run(args) do
+          Mix.shell().info(Enum.join(args, " "))
+        end
     """)
   end
 
@@ -187,19 +239,18 @@ defmodule Mix.Tasks.Mod.New do
     Map.update!(parts, group, &[code | &1])
   end
 
-  defp assemble_parts(module, %{uses: uses, attrs: attrs, apis: apis, impls: impls}) do
-    uses = :lists.reverse(uses)
-    apis = :lists.reverse(apis)
-    impls = :lists.reverse(impls)
-    attrs = :lists.reverse(attrs)
+  defp assemble_parts(module, %{
+         uses: uses,
+         attrs: attrs,
+         apis: apis,
+         impls: impls,
+         top_docs: top_docs
+       }) do
+    [uses, apis, impls, attrs, top_docs] = reverse_lists([uses, apis, impls, attrs, top_docs])
 
     [
       "defmodule #{inspect(module)} do",
-      ~S(
-      @moduledoc """
-      TODO Start documenting the module by writing a short description of its purpose.
-      """
-      ),
+      top_docs,
       uses,
       attrs,
       apis,
@@ -219,5 +270,13 @@ defmodule Mix.Tasks.Mod.New do
     else
       []
     end
+  end
+
+  defp reverse_lists([list | rest]) do
+    [:lists.reverse(list) | reverse_lists(rest)]
+  end
+
+  defp reverse_lists([]) do
+    []
   end
 end
