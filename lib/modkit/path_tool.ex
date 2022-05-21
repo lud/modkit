@@ -41,7 +41,7 @@ defmodule Modkit.PathTool do
   end
 
   # This is a copy of `Macro.underscore/1` but that does not add an underscore
-  # after digits, and does not handle dots.
+  # after digits.
   defp underscore(atom) when is_atom(atom) do
     "Elixir." <> rest = Atom.to_string(atom)
     underscore(rest)
@@ -65,6 +65,10 @@ defmodule Modkit.PathTool do
        when h >= ?A and h <= ?Z and not (prev >= ?A and prev <= ?Z) and
               not (prev >= ?0 and prev <= ?9) and prev != ?_ do
     <<?_, to_lower_char(h)>> <> do_underscore(t, h)
+  end
+
+  defp do_underscore(<<?., t::binary>>, _) do
+    <<?/>> <> underscore(t)
   end
 
   defp do_underscore(<<h, t::binary>>, _) do

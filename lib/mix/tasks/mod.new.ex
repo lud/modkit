@@ -104,11 +104,43 @@ defmodule Mix.Tasks.Mod.New do
 
     case Modkit.Mod.preferred_path(module, mount) do
       {:error, :no_mount_point} ->
-        abort("The --path option is required when the module prefix is not mounted.")
+        sample_config = Modkit.Config.project_get(project, [:modkit], [])
+        new_mount = {module, "lib/path/to/#{Modkit.PathTool.to_snake(module)}"}
+
+        new_conf =
+          Keyword.update(sample_config, :mount, [new_mount], fn kw -> kw ++ [new_mount] end)
+
+        abort("""
+        The --path option is required when the module prefix is not mounted.
+
+        Please export a mount point from project/0 for the following prefix in mix.exs:
+
+            def project do
+              [
+                app: #{inspect(Modkit.Config.otp_app(project))},
+                # ...
+                # ...
+                modkit: modkit()
+              ]
+            end
+
+            defp modkit do
+              #{indent(inspect(new_conf, pretty: true), 6)}
+            end
+        """)
 
       {:ok, path} ->
         Map.put(opts, :path, path)
     end
+  end
+
+  defp indent(text, count) do
+    spaces = String.duplicate(" ", count)
+
+    text
+    |> String.split("\n")
+    |> Enum.map_join("\n", &[spaces, &1])
+    |> String.trim()
   end
 
   def collect_parts(:gen_server, parts) do
