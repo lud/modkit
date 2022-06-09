@@ -179,6 +179,7 @@ defmodule Mix.Tasks.Mod.New do
 
   def collect_parts(:gen_server, parts) do
     parts
+    |> add_part(:top_docs, [default_moduledoc()])
     |> add_part(:uses, "use GenServer")
     |> add_part(:attrs, "@gen_opts ~w(name timeout debug spawn_opt hibernate_after)a")
     |> add_part(:apis, """
@@ -197,6 +198,7 @@ defmodule Mix.Tasks.Mod.New do
 
   def collect_parts(:supervisor, parts) do
     parts
+    |> add_part(:top_docs, [default_moduledoc()])
     |> add_part(:uses, "use Supervisor")
     |> add_part(:attrs, "@gen_opts ~w(name)a")
     |> add_part(:apis, """
