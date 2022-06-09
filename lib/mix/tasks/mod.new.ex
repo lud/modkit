@@ -42,12 +42,12 @@ defmodule Mix.Tasks.Mod.New do
       |> check_exclusive_opts()
       |> add_path_opt(args.module)
 
-    parts_init = %{uses: [], attrs: [], apis: [], impls: [], top_docs: []}
+    parts_init = %{uses: [], attrs: [], apis: [], impls: [], top_docs: [default_moduledoc()]}
 
     parts =
       opts
       |> Map.take([:gen_server, :supervisor, :mix_task])
-      |> Enum.filter(&elem(&1, 1))
+      |> Enum.filter(fn {_kind, enabled?} -> enabled? end)
       |> Keyword.keys()
       |> Enum.reduce(parts_init, &collect_parts/2)
 
@@ -179,7 +179,6 @@ defmodule Mix.Tasks.Mod.New do
 
   def collect_parts(:gen_server, parts) do
     parts
-    |> add_part(:top_docs, [default_moduledoc()])
     |> add_part(:uses, "use GenServer")
     |> add_part(:attrs, "@gen_opts ~w(name timeout debug spawn_opt hibernate_after)a")
     |> add_part(:apis, """
@@ -198,7 +197,6 @@ defmodule Mix.Tasks.Mod.New do
 
   def collect_parts(:supervisor, parts) do
     parts
-    |> add_part(:top_docs, [default_moduledoc()])
     |> add_part(:uses, "use Supervisor")
     |> add_part(:attrs, "@gen_opts ~w(name)a")
     |> add_part(:apis, """
@@ -225,7 +223,6 @@ defmodule Mix.Tasks.Mod.New do
   def collect_parts(:mix_task, parts) do
     parts
     |> add_part(:top_docs, [
-      default_moduledoc(),
       ~S(@shortdoc "TODO short description of the task")
     ])
     |> add_part(:uses, "use Mix.Task")
