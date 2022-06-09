@@ -172,7 +172,7 @@ defmodule Mix.Tasks.Mod.New do
   defp default_moduledoc do
     ~S(
       @moduledoc """
-      TODO Start documenting the module by writing a short description of its purpose.\
+      TODO Start documenting the module by writing a short description of its purpose.
       """
     )
   end
