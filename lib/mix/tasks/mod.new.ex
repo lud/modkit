@@ -229,7 +229,7 @@ defmodule Mix.Tasks.Mod.New do
     |> add_part(:apis, """
         def start_link(opts) do
           {gen_opts, opts} = Keyword.split(opts, @gen_opts)
-          Supervisor.start_link(__MODULE__, opts, gen_opts)
+          DynamicSupervisor.start_link(__MODULE__, opts, gen_opts)
         end
     """)
     |> add_part(:apis, """
