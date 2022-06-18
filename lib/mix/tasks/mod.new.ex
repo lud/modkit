@@ -20,6 +20,11 @@ defmodule Mix.Tasks.Mod.New do
         doc: "use Supervisor and define base functions",
         default: false
       )
+      |> option(:dynamic_supervisor, :boolean,
+        alias: :d,
+        doc: "use DynamicSupervisor and define base functions",
+        default: false
+      )
       |> option(:mix_task, :boolean,
         alias: :t,
         doc: "create a new mix task",
@@ -46,7 +51,7 @@ defmodule Mix.Tasks.Mod.New do
 
     parts =
       opts
-      |> Map.take([:gen_server, :supervisor, :mix_task])
+      |> Map.take([:gen_server, :supervisor, :mix_task, :dynamic_supervisor])
       |> Enum.filter(fn {_kind, enabled?} -> enabled? end)
       |> Keyword.keys()
       |> Enum.reduce(parts_init, &collect_parts/2)
@@ -217,6 +222,24 @@ defmodule Mix.Tasks.Mod.New do
     """)
   end
 
+  def collect_parts(:dynamic_supervisor, parts) do
+    parts
+    |> add_part(:uses, "use DynamicSupervisor")
+    |> add_part(:attrs, "@gen_opts ~w(name)a")
+    |> add_part(:apis, """
+        def start_link(opts) do
+          {gen_opts, opts} = Keyword.split(opts, @gen_opts)
+          Supervisor.start_link(__MODULE__, opts, gen_opts)
+        end
+    """)
+    |> add_part(:apis, """
+        @impl DynamicSupervisor
+        def init(_init_arg) do
+          DynamicSupervisor.init(strategy: :one_for_one)
+        end
+    """)
+  end
+
   defmodule Mix.Tasks.Echo do
   end
 
@@ -228,8 +251,8 @@ defmodule Mix.Tasks.Mod.New do
     |> add_part(:uses, "use Mix.Task")
     |> add_part(:apis, """
         @impl Mix.Task
-        def run(args) do
-          Mix.shell().info(Enum.join(args, " "))
+        def run(argv) do
+          # ...
         end
     """)
   end
