@@ -38,13 +38,21 @@ defmodule Modkit.Mount.Point do
 
   def new({prefix, {flavor, path}})
       when is_atom(prefix) and flavor in @flavors and is_binary(path) do
-    new(prefix, flavor, path)
+    _new(prefix, flavor, path)
   end
 
-  @spec new(prefix :: module, flavor, path :: binary) :: t
+  def new(other) do
+    raise ArgumentError, """
+    invalid mount point: #{inspect(other)}
 
-  def new(prefix, flavor, path)
-      when is_atom(prefix) and flavor in @flavors and is_binary(path) do
+    Valid mount points are:
+     * {My.Namespace, "path/to/code"}
+     * {My.Namespace, {:phoenix, "path/to/code"}}
+    """
+  end
+
+  defp _new(prefix, flavor, path)
+       when is_atom(prefix) and flavor in @flavors and is_binary(path) do
     %__MODULE__{prefix: prefix, flavor: flavor, splitfix: Module.split(prefix), path: path}
   end
 

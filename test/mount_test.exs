@@ -19,6 +19,12 @@ defmodule Modkit.MountTest do
            } == Point.new({AppWeb, {:phoenix, "lib/app_web"}})
   end
 
+  test "mount point config error" do
+    assert_raise ArgumentError, fn ->
+      Point.new(MyApp)
+    end
+  end
+
   test "it is possible to append a mount point or a spec" do
     assert %Point{
              path: "lib/app",

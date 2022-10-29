@@ -24,6 +24,10 @@ defmodule Modkit.Mount do
     Enum.reduce(points, new(), &add(&2, &1))
   end
 
+  def from_points(points) do
+    raise ArgumentError, "expected the :mount to be a list of 2-tuples, got: #{inspect(points)}"
+  end
+
   defp insert([p | _] = ps, p),
     # ignore exact duplicates
     do: ps
