@@ -112,7 +112,13 @@ defmodule Mix.Tasks.Mod.Relocate do
   end
 
   defp deviate_path(from_rest, to_rest, acc) do
-    {Path.join(from_rest), Path.join(to_rest), Path.join(:lists.reverse(acc))}
+    common_path =
+      case acc do
+        [] -> "."
+        list -> Path.join(:lists.reverse(list))
+      end
+
+    {Path.join(from_rest), Path.join(to_rest), common_path}
   end
 
   defp print_run_action(action) do
