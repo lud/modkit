@@ -203,11 +203,9 @@ defmodule Mix.Tasks.Mod.New do
   def collect_parts(:supervisor, parts) do
     parts
     |> add_part(:uses, "use Supervisor")
-    |> add_part(:attrs, "@gen_opts ~w(name)a")
     |> add_part(:apis, """
-        def start_link(opts) do
-          {gen_opts, opts} = Keyword.split(opts, @gen_opts)
-          Supervisor.start_link(__MODULE__, opts, gen_opts)
+        def start_link(arg) do
+          Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
         end
     """)
     |> add_part(:apis, """
