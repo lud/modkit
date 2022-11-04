@@ -1,20 +1,26 @@
 defmodule Modkit.Mod do
   alias Modkit.Mount.Point
 
-  def preferred_path(module, mount) when is_atom(module) do
+  def preferred_path(module, mount, opts \\ []) when is_atom(module) do
     modsplit = Module.split(module)
 
     case Enum.find(mount.points, &Point.prefix_of?(&1, modsplit)) do
-      %Point{} = point -> {:ok, build_preferred_path(modsplit, point)}
+      %Point{} = point -> {:ok, build_preferred_path(modsplit, point, opts)}
       nil -> {:error, :no_mount_point}
     end
   end
 
-  @spec build_preferred_path([binary], Point.t()) :: binary
-  defp build_preferred_path(modsplit, point) do
+  @spec build_preferred_path([binary], Point.t(), Keyword.t()) :: binary
+  defp build_preferred_path(modsplit, point, opts) do
+    extenstion =
+      case opts[:exs] do
+        true -> ".exs"
+        _ -> ".ex"
+      end
+
     modsplit = unprefix(modsplit, point.splitfix)
     sub_path = create_path(modsplit, point.flavor)
-    Path.join(:lists.flatten([point.path, sub_path])) <> ".ex"
+    Path.join(:lists.flatten([point.path, sub_path])) <> extenstion
   end
 
   defp unprefix([a | modrest], [a | prefrest]) do

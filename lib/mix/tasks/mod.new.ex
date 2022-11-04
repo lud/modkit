@@ -148,7 +148,7 @@ defmodule Mix.Tasks.Mod.New do
         false -> {Modkit.Config.mount(project), :mount, "lib/path/to"}
       end
 
-    case Modkit.Mod.preferred_path(module, mount) do
+    case Modkit.Mod.preferred_path(module, mount, exs: test?) do
       {:error, :no_mount_point} -> handle_no_mount(project, module, key, sample)
       {:ok, path} -> Map.put(opts, :path, path)
     end
