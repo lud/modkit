@@ -13,6 +13,12 @@ defmodule Modkit.Config do
     Modkit.Mount.from_points(mount)
   end
 
+  def test_mount(project) do
+    mount = project_get(project, [:modkit, :test_mount], nil) || default_test_mount(project)
+
+    Modkit.Mount.from_points(mount)
+  end
+
   defp main_module_from_current_project() do
     Mix.Project.get!()
     |> Module.split()
@@ -29,10 +35,10 @@ defmodule Modkit.Config do
 
     base_path = Enum.find(elixirc_paths, first_path, &(&1 == "lib"))
 
-    # here we use the OTP app instead of the to_sname/1 function because the
-    # apps generated with `mix new` will create that path by default. The module
-    # to snake path conversion does not mirror exactly the snake to module
-    # conversion.
+    # Here we use the OTP app instead of the to_sname/1 function because the
+    # apps generated with `mix new` will create that path by default. The
+    # module-to-snake path conversion does not exactly mirror our
+    # snake-to-module conversion.
     app_code_path =
       Path.join(
         base_path,
@@ -44,6 +50,18 @@ defmodule Modkit.Config do
     [
       {app_mod, app_code_path},
       {Mix.Tasks, {:mix_task, mix_tasks_path}}
+    ]
+  end
+
+  defp default_test_mount(project) do
+    app_mod = main_module_from_current_project()
+
+    [first_path | _] = test_paths = project_get(project, :test_paths, ["test"])
+
+    test_path = Enum.find(test_paths, first_path, &(&1 == "test"))
+
+    [
+      {app_mod, test_path}
     ]
   end
 

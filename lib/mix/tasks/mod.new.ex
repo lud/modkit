@@ -30,6 +30,11 @@ defmodule Mix.Tasks.Mod.New do
         doc: "create a new mix task",
         default: false
       )
+      |> option(:unit_test, :boolean,
+        alias: :u,
+        doc: "create a new unit test",
+        default: false
+      )
       |> option(:path, :string,
         alias: :p,
         doc: "The path of the module to write. Unnecessary if the module prefix is mounted."
@@ -47,11 +52,17 @@ defmodule Mix.Tasks.Mod.New do
       |> check_exclusive_opts()
       |> add_path_opt(args.module)
 
-    parts_init = %{uses: [], attrs: [], apis: [], impls: [], top_docs: [default_moduledoc()]}
+    top_docs =
+      case opts.unit_test do
+        true -> []
+        _ -> [default_moduledoc()]
+      end
+
+    parts_init = %{uses: [], attrs: [], apis: [], impls: [], top_docs: top_docs}
 
     parts =
       opts
-      |> Map.take([:gen_server, :supervisor, :mix_task, :dynamic_supervisor])
+      |> Map.take([:gen_server, :supervisor, :mix_task, :dynamic_supervisor, :unit_test])
       |> Enum.filter(fn {_kind, enabled?} -> enabled? end)
       |> Keyword.keys()
       |> Enum.reduce(parts_init, &collect_parts/2)
@@ -99,7 +110,8 @@ defmodule Mix.Tasks.Mod.New do
     exclusive = %{
       gen_server: "--gen-server",
       supervisor: "--supervisor",
-      mix_task: "--mix-task"
+      mix_task: "--mix-task",
+      unit_test: "--unit-test"
     }
 
     provided =
@@ -127,42 +139,50 @@ defmodule Mix.Tasks.Mod.New do
   defp add_path_opt(%{path: path} = opts, _) when is_binary(path),
     do: opts
 
-  defp add_path_opt(opts, module) do
-    # Use the preferred path if mounted or abort
-
+  defp add_path_opt(%{unit_test: test?} = opts, module) do
     project = Modkit.Config.current_project()
-    mount = Modkit.Config.mount(project)
+
+    {mount, key, sample} =
+      case test? do
+        true -> {Modkit.Config.test_mount(project), :test_mount, "test/path/to"}
+        false -> {Modkit.Config.mount(project), :mount, "lib/path/to"}
+      end
 
     case Modkit.Mod.preferred_path(module, mount) do
-      {:error, :no_mount_point} ->
-        sample_config = Modkit.Config.project_get(project, [:modkit], [])
-        new_mount = {module, "lib/path/to/#{Modkit.PathTool.to_snake(module)}"}
-
-        new_conf =
-          Keyword.update(sample_config, :mount, [new_mount], fn kw -> kw ++ [new_mount] end)
-
-        abort("""
-        The --path option is required when the module prefix is not mounted.
-
-        Please export a mount point from project/0 for the following prefix in mix.exs:
-
-            def project do
-              [
-                app: #{inspect(Modkit.Config.otp_app(project))},
-                # ...
-                # ...
-                modkit: modkit()
-              ]
-            end
-
-            defp modkit do
-              #{indent(inspect(new_conf, pretty: true), 6)}
-            end
-        """)
-
-      {:ok, path} ->
-        Map.put(opts, :path, path)
+      {:error, :no_mount_point} -> handle_no_mount(project, module, key, sample)
+      {:ok, path} -> Map.put(opts, :path, path)
     end
+  end
+
+  defp handle_no_mount(project, module, config_key, sample_path) do
+    sample_config = Modkit.Config.project_get(project, [:modkit], [])
+    new_mount = {module, sample_path <> "/" <> Modkit.PathTool.to_snake(module)}
+
+    new_conf =
+      Keyword.update(sample_config, config_key, [new_mount], fn kw -> kw ++ [new_mount] end)
+
+    abort_no_mount(project, new_conf)
+  end
+
+  defp abort_no_mount(project, new_conf) do
+    abort("""
+    The --path option is required when the module prefix is not mounted.
+
+    Please export a mount point from project/0 for the desired prefix in mix.exs:
+
+        def project do
+          [
+            app: #{inspect(Modkit.Config.otp_app(project))},
+            # ...
+            # ...
+            modkit: modkit()
+          ]
+        end
+
+        defp modkit do
+          #{indent(inspect(new_conf, pretty: true, width: 70), 6)}
+        end
+    """)
   end
 
   defp indent(text, count) do
@@ -182,7 +202,7 @@ defmodule Mix.Tasks.Mod.New do
     )
   end
 
-  def collect_parts(:gen_server, parts) do
+  defp collect_parts(:gen_server, parts) do
     parts
     |> add_part(:uses, "use GenServer")
     |> add_part(:attrs, "@gen_opts ~w(name timeout debug spawn_opt hibernate_after)a")
@@ -200,7 +220,7 @@ defmodule Mix.Tasks.Mod.New do
     """)
   end
 
-  def collect_parts(:supervisor, parts) do
+  defp collect_parts(:supervisor, parts) do
     parts
     |> add_part(:uses, "use Supervisor")
     |> add_part(:apis, """
@@ -220,7 +240,7 @@ defmodule Mix.Tasks.Mod.New do
     """)
   end
 
-  def collect_parts(:dynamic_supervisor, parts) do
+  defp collect_parts(:dynamic_supervisor, parts) do
     parts
     |> add_part(:uses, "use DynamicSupervisor")
     |> add_part(:attrs, "@gen_opts ~w(name)a")
@@ -238,10 +258,17 @@ defmodule Mix.Tasks.Mod.New do
     """)
   end
 
-  defmodule Mix.Tasks.Echo do
+  defp collect_parts(:unit_test, parts) do
+    parts
+    |> add_part(:uses, "use ExUnit.Case, async: false")
+    |> add_part(:apis, """
+    test "should do something" do
+
+    end
+    """)
   end
 
-  def collect_parts(:mix_task, parts) do
+  defp collect_parts(:mix_task, parts) do
     parts
     |> add_part(:top_docs, [
       ~S(@shortdoc "TODO short description of the task")
