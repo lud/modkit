@@ -48,6 +48,7 @@ defmodule Mix.Tasks.Mod.Relocate do
       |> Enum.reject(&is_protocol_impl?/1)
       |> map_filter_ok(&build_move(&1, mount, cwd))
       |> resolve_multis()
+      |> ignore_generated()
       |> Enum.reject(&(in_good_path?(&1) or target_file_exists?(&1)))
 
     dir_actions = compute_dirs(moves)
@@ -178,6 +179,18 @@ defmodule Mix.Tasks.Mod.Relocate do
       {_file, [single]} -> [single]
       {_file, multis} -> parent_mod_or_empty(multis)
     end)
+  end
+
+  defp ignore_generated(moves) do
+    moves
+    |> Enum.filter(fn x ->
+      x.cur_path |> IO.inspect(label: "x.cur_path")
+
+      not String.contains?("/deps/", x.cur_path)
+      |> IO.inspect(label: "is generated")
+    end)
+
+    # |> Enum.filter(&String.contains?("/deps/", &1.cur_path))
   end
 
   defp parent_mod_or_empty(moves) do

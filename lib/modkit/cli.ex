@@ -204,9 +204,9 @@ defmodule Modkit.Cli do
       [
         case ali do
           nil -> "    "
-          _ -> "-#{ali}, "
+          _ -> ["-", bright(Atom.to_string(ali)), " "]
         end,
-        bright(format_long_opt(key, max_opt)),
+        format_long_opt(key, max_opt),
         format_opt_doc("#{type}. #{doc}", left_blank, columns),
         ?\n
       ]
@@ -219,7 +219,7 @@ defmodule Modkit.Cli do
 
   defp format_long_opt(key, max_opt) do
     name = key |> Atom.to_string() |> String.replace("_", "-")
-    ["--", String.pad_trailing(name, max_opt, " ")]
+    ["--", bright(String.pad_trailing(name, max_opt, " "))]
   end
 
   defp io_columns do
