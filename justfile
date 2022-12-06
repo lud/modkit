@@ -5,7 +5,7 @@ install: reinstall
 
 reinstall: uninstall
     mix deps.get
-    mix archive.install --force
+    mix test && mix archive.install --force
 
 uninstall:
     rm -vf *ez

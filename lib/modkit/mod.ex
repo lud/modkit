@@ -1,78 +1,90 @@
 defmodule Modkit.Mod do
-  alias Modkit.Mount.Point
-
-  def preferred_path(module, mount, opts \\ []) when is_atom(module) do
-    modsplit = Module.split(module)
-
-    case Enum.find(mount.points, &Point.prefix_of?(&1, modsplit)) do
-      %Point{} = point -> {:ok, build_preferred_path(modsplit, point, opts)}
-      nil -> {:error, :no_mount_point}
-    end
+  def current_path(module, relative_to \\ File.cwd!()) do
+    source = Keyword.fetch!(module.module_info(:compile), :source) |> List.to_string()
+    Path.relative_to(source, relative_to)
   end
 
-  @spec build_preferred_path([binary], Point.t(), Keyword.t()) :: binary
-  defp build_preferred_path(modsplit, point, opts) do
-    extenstion =
-      case opts[:exs] do
-        true -> ".exs"
-        _ -> ".ex"
-      end
-
-    modsplit = unprefix(modsplit, point.splitfix)
-    sub_path = create_path(modsplit, point.flavor)
-    Path.join(:lists.flatten([point.path, sub_path])) <> extenstion
-  end
-
-  defp unprefix([a | modrest], [a | prefrest]) do
-    unprefix(modrest, prefrest)
-  end
-
-  defp unprefix(modrest, []) do
-    modrest
-  end
-
-  defp create_path(segments, :mix_task) do
-    Enum.map_join(segments, ".", &Modkit.PathTool.to_snake/1)
-  end
-
-  defp create_path([], _),
-    do: []
-
-  defp create_path([segment | rest], flavor),
-    do: [path_segment(segment, flavor) | create_path(rest, flavor)]
-
-  defp path_segment(segment, :elixir), do: Modkit.PathTool.to_snake(segment)
-
-  defp path_segment(segment, :phoenix) do
-    basename = Modkit.PathTool.to_snake(segment)
-
-    cond do
-      String.ends_with?(segment, "View") -> ["views", basename]
-      String.ends_with?(segment, "Controller") -> ["controllers", basename]
-      String.ends_with?(segment, "Channel") -> ["channels", basename]
-      String.ends_with?(segment, "Socket") -> ["channels", basename]
-      :other -> basename
-    end
-  end
-
-  def list(project \\ Modkit.Config.current_project()) do
-    app = Modkit.Config.otp_app(project)
-
-    case :application.get_key(app, :modules) do
+  def list_all(otp_app) do
+    case :application.get_key(otp_app, :modules) do
       {:ok, mods} ->
         mods
 
       :undefined ->
         raise ArgumentError, """
-        could not list modules from app.
+        could not list modules from application #{inspect(otp_app)}.
 
         Are you in a mix project?
         """
     end
   end
 
-  def current_path(module, relative_to \\ File.cwd!()) do
-    source = Keyword.fetch!(module.module_info(:compile), :source) |> List.to_string()
-    Path.relative_to(source, relative_to)
+  def list_by_file(otp_app, relative_to \\ File.cwd!()) do
+    otp_app
+    |> list_all()
+    |> Enum.group_by(&current_path(&1, relative_to))
+  end
+
+  @doc """
+  Given two module names, returns the module name that is a prefix of the other,
+  or `nil` if the two names are disjoint.
+
+  See `local_root/1`.
+
+  ### Examples
+
+      iex> local_root(A, A.B)
+      A
+
+      iex> local_root(A.B, A.C)
+      nil
+  """
+  @spec local_root(module, module) :: module | nil
+  def local_root(a, b) do
+    local_root([a, b])
+  end
+
+  @doc """
+  Returns the module that is a local root of all given modules. That is a common
+  prefix of all given modules that is also a module from the list.
+
+  For instance, modules `A` and `A.B` have a common prefix that is `A`, and `A`
+  is provided as an argument, so it will be returned.
+
+  But if only `A.B` and `A.C` are provided, the common prefix `A` will not be
+  returned since it is not one of the arguments.
+
+  ### Examples
+
+      iex> local_root([A, A.B])
+      A
+
+      iex> local_root([A.B, A.C, A])
+      A
+
+      iex> local_root([A.B, A.C])
+      nil
+
+      iex> local_root([])
+      nil
+  """
+
+  def local_root([_ | _] = list) do
+    with_splits = Enum.map(list, &{&1, Module.split(&1)})
+
+    found =
+      Enum.find(with_splits, nil, fn {_, parent_split} ->
+        Enum.all?(with_splits, fn {_, child_split} ->
+          List.starts_with?(child_split, parent_split)
+        end)
+      end)
+
+    case found do
+      {mod, _} -> mod
+      _ -> nil
+    end
+  end
+
+  def local_root([]) do
+    nil
   end
 end

@@ -1,329 +1,166 @@
 defmodule Mix.Tasks.Mod.New do
+  alias Modkit.Mod.Template
+  alias Modkit.Mount
+  alias Modkit.CLI
   use Mix.Task
 
-  @shortdoc "Create a new module in the current application"
+  @shortdoc "Relocate all modules in the current application"
 
-  import Modkit.Cli
+  @command [
+    module: __MODULE__,
+    options: [
+      gen_server: [
+        type: :boolean,
+        short: :g,
+        doc: "use GenServer and define base functions",
+        default: false
+      ],
+      supervisor: [
+        type: :boolean,
+        short: :s,
+        doc: "use Supervisor and define base functions",
+        default: false
+      ],
+      dynamic_supervisor: [
+        type: :boolean,
+        short: :d,
+        doc: "use DynamicSupervisor and define base functions",
+        default: false
+      ],
+      # mix_task: [type: :boolean, short: :t, doc: "create a new mix task", default: false],
+      # unit_test: [type: :boolean, short: :u, doc: "create a new unit test", default: false],
+      path: [
+        type: :string,
+        short: :p,
+        doc: "The path of the module to write. Unnecessary if the module prefix is mounted."
+      ],
+      overwrite: [
+        type: :boolean,
+        short: :o,
+        doc: "Overwrite the file if it exists. Always prompt.",
+        default: false
+      ]
+    ],
+    arguments: [
+      module: [cast: {__MODULE__, :cast_mod, []}]
+    ]
+  ]
 
+  @usage CLI.format_usage(@command, format: :moduledoc)
+
+  @moduledoc """
+  Creates a new module in the current application, based on a template.
+
+  The location of the new module is defined  according to the `:mount` option in
+  `:modkit` configuration defined in the project file (`mix.exs`).
+
+  If not defined, default mount points are defined as follows:
+
+      [
+        {App, "lib/app"}
+        {Mix.Tasks, "lib/mix/tasks", flavor: :mix_task}
+      ]
+
+  #{@usage}
+  """
+
+  @impl Mix.Task
   def run(argv) do
     Mix.Task.run("app.config")
 
-    {opts, args} =
-      command(__MODULE__)
-      |> option(:gen_server, :boolean,
-        alias: :g,
-        doc: "use GenServer and define base functions",
-        default: false
+    command =
+      CLI.parse_or_halt!(
+        argv,
+        @command
       )
-      |> option(:supervisor, :boolean,
-        alias: :s,
-        doc: "use Supervisor and define base functions",
-        default: false
-      )
-      |> option(:dynamic_supervisor, :boolean,
-        alias: :d,
-        doc: "use DynamicSupervisor and define base functions",
-        default: false
-      )
-      |> option(:mix_task, :boolean,
-        alias: :t,
-        doc: "create a new mix task",
-        default: false
-      )
-      |> option(:unit_test, :boolean,
-        alias: :u,
-        doc: "create a new unit test",
-        default: false
-      )
-      |> option(:path, :string,
-        alias: :p,
-        doc: "The path of the module to write. Unnecessary if the module prefix is mounted."
-      )
-      |> option(:overwrite, :boolean,
-        alias: :o,
-        doc: "Overwrite the file if it exists. Always prompt.",
-        default: false
-      )
-      |> argument(:module, required: true, cast: &Module.concat([&1]))
-      |> parse(argv)
 
-    opts =
-      opts
-      |> check_exclusive_opts()
-      |> add_path_opt(args.module)
+    %{mount: mount} = Modkit.load_current_project()
+    %{options: options, arguments: arguments} = command
+    options = check_exclusive_opts(options)
+    module = arguments.module
+    template = find_template(options)
 
-    top_docs =
-      case opts.unit_test do
-        true -> []
-        _ -> [default_moduledoc()]
+    path = resolve_path(module, mount, options)
+
+    rendered = Template.render(module, template: template)
+
+    can_write? =
+      cond do
+        not File.exists?(path) -> true
+        options.overwrite -> true
+        Mix.shell().yes?("File #{path} exists, overwrite?") -> true
+        :_ -> false
       end
 
-    parts_init = %{uses: [], attrs: [], apis: [], impls: [], top_docs: top_docs}
-
-    parts =
-      opts
-      |> Map.take([:gen_server, :supervisor, :mix_task, :dynamic_supervisor, :unit_test])
-      |> Enum.filter(fn {_kind, enabled?} -> enabled? end)
-      |> Keyword.keys()
-      |> Enum.reduce(parts_init, &collect_parts/2)
-
-    code =
-      assemble_parts(args.module, parts)
-      |> :erlang.iolist_to_binary()
-      |> Code.format_string!(formatter_opts())
-
-    write_code(opts, code)
-    success_stop("wrote code to #{opts.path}")
-  end
-
-  defp write_code(%{path: path, overwrite: over?}, code) do
-    if can_write?(path, over?) do
-      :ok = ensure_dir(Path.dirname(path))
-      File.write!(path, code)
+    if can_write? do
+      File.mkdir_p!(Path.dirname(path))
+      File.write!(path, rendered)
+      CLI.halt_success("Wrote module #{inspect(module)} to #{path}")
     else
-      abort("file exists: #{path}")
+      CLI.writeln("cancelled")
     end
   end
 
-  defp ensure_dir(path) do
-    if File.dir?(path) do
-      :ok
-    else
-      ensure_dir(Path.dirname(path))
-      File.mkdir!(path)
-    end
-  end
-
-  defp can_write?(path, prompt?) do
-    if File.exists?(path) do
-      if prompt? do
-        Mix.Shell.IO.yes?("Overwrite file #{path}?", default: :no)
-      else
-        false
-      end
-    else
-      true
-    end
-  end
-
-  defp check_exclusive_opts(opts) do
+  defp check_exclusive_opts(options) do
     exclusive = %{
       gen_server: "--gen-server",
       supervisor: "--supervisor",
       mix_task: "--mix-task",
-      unit_test: "--unit-test"
+      unit_test: "--unit-test",
+      dynamic_supervisor: "--dynamic-supervisor"
     }
 
     provided =
-      opts
+      options
       |> Map.take(Map.keys(exclusive))
       |> Map.filter(fn {_, enabled} -> enabled == true end)
       |> Map.keys()
 
     case provided do
       [] ->
-        opts
+        options
 
       [_single] ->
-        opts
+        options
 
       [top | rest] ->
         rest
         |> Enum.map(&Map.fetch!(exclusive, &1))
         |> Enum.intersperse(", ")
-        |> Kernel.++([" and ", Map.fetch!(exclusive, top), " are mutually exclusive"])
-        |> abort
+        |> Kernel.++([" and ", Map.fetch!(exclusive, top), " options are mutually exclusive"])
+        |> CLI.halt_error()
     end
   end
 
-  defp add_path_opt(%{path: path} = opts, _) when is_binary(path),
-    do: opts
-
-  defp add_path_opt(%{unit_test: test?} = opts, module) do
-    project = Modkit.Config.current_project()
-
-    {mount, key, sample} =
-      case test? do
-        true -> {Modkit.Config.test_mount(project), :test_mount, "test/path/to"}
-        false -> {Modkit.Config.mount(project), :mount, "lib/path/to"}
-      end
-
-    case Modkit.Mod.preferred_path(module, mount, exs: test?) do
-      {:error, :no_mount_point} -> handle_no_mount(project, module, key, sample)
-      {:ok, path} -> Map.put(opts, :path, path)
+  defp find_template(options) do
+    cond do
+      options.gen_server -> Template.GenServerTemplate
+      options.supervisor -> Template.SupervisorTemplate
+      options.dynamic_supervisor -> Template.DynamicSupervisorTemplate
+      # options.mix_task -> Template.MixTaskTemplate
+      # options.unit_test -> Template.UnitTestTemplate
+      true -> Template.BaseModule
     end
   end
 
-  defp handle_no_mount(project, module, config_key, sample_path) do
-    sample_config = Modkit.Config.project_get(project, [:modkit], [])
-    new_mount = {module, sample_path <> "/" <> Modkit.PathTool.to_snake(module)}
-
-    new_conf =
-      Keyword.update(sample_config, config_key, [new_mount], fn kw -> kw ++ [new_mount] end)
-
-    abort_no_mount(project, new_conf)
-  end
-
-  defp abort_no_mount(project, new_conf) do
-    abort("""
-    The --path option is required when the module prefix is not mounted.
-
-    Please export a mount point from project/0 for the desired prefix in mix.exs:
-
-        def project do
-          [
-            app: #{inspect(Modkit.Config.otp_app(project))},
-            # ...
-            # ...
-            modkit: modkit()
-          ]
-        end
-
-        defp modkit do
-          #{indent(inspect(new_conf, pretty: true, width: 70), 6)}
-        end
-    """)
-  end
-
-  defp indent(text, count) do
-    spaces = String.duplicate(" ", count)
-
-    text
-    |> String.split("\n")
-    |> Enum.map_join("\n", &[spaces, &1])
-    |> String.trim()
-  end
-
-  defp default_moduledoc do
-    ~S(
-      @moduledoc """
-      TODO Start documenting the module by writing a short description of its purpose.
-      """
-    )
-  end
-
-  defp collect_parts(:gen_server, parts) do
-    parts
-    |> add_part(:uses, "use GenServer")
-    |> add_part(:attrs, "@gen_opts ~w(name timeout debug spawn_opt hibernate_after)a")
-    |> add_part(:apis, """
-        def start_link(opts) do
-          {gen_opts, opts} = Keyword.split(opts, @gen_opts)
-          GenServer.start_link(__MODULE__, opts, gen_opts)
-        end
-    """)
-    |> add_part(:apis, """
-        @impl GenServer
-        def init(opts) do
-          {:ok, opts}
-        end
-    """)
-  end
-
-  defp collect_parts(:supervisor, parts) do
-    parts
-    |> add_part(:uses, "use Supervisor")
-    |> add_part(:apis, """
-        def start_link(arg) do
-          Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
-        end
-    """)
-    |> add_part(:apis, """
-        @impl Supervisor
-        def init(_init_arg) do
-          children = [
-            {Worker, key: :value}
-          ]
-
-          Supervisor.init(children, strategy: :one_for_one)
-        end
-    """)
-  end
-
-  defp collect_parts(:dynamic_supervisor, parts) do
-    parts
-    |> add_part(:uses, "use DynamicSupervisor")
-    |> add_part(:attrs, "@gen_opts ~w(name)a")
-    |> add_part(:apis, """
-        def start_link(opts) do
-          {gen_opts, opts} = Keyword.split(opts, @gen_opts)
-          DynamicSupervisor.start_link(__MODULE__, opts, gen_opts)
-        end
-    """)
-    |> add_part(:apis, """
-        @impl DynamicSupervisor
-        def init(_init_arg) do
-          DynamicSupervisor.init(strategy: :one_for_one)
-        end
-    """)
-  end
-
-  defp collect_parts(:unit_test, parts) do
-    parts
-    |> add_part(:uses, "use ExUnit.Case, async: false")
-    |> add_part(:apis, """
-    test "should do something" do
-
-    end
-    """)
-  end
-
-  defp collect_parts(:mix_task, parts) do
-    parts
-    |> add_part(:top_docs, [
-      ~S(@shortdoc "TODO short description of the task")
-    ])
-    |> add_part(:uses, "use Mix.Task")
-    |> add_part(:apis, """
-        @impl Mix.Task
-        def run(argv) do
-          # ...
-        end
-    """)
-  end
-
-  defp add_part(parts, group, code) do
-    Map.update!(parts, group, &[code | &1])
-  end
-
-  defp assemble_parts(module, %{
-         uses: uses,
-         attrs: attrs,
-         apis: apis,
-         impls: impls,
-         top_docs: top_docs
-       }) do
-    [uses, apis, impls, attrs, top_docs] = reverse_lists([uses, apis, impls, attrs, top_docs])
-
-    [
-      "defmodule #{inspect(module)} do",
-      top_docs,
-      uses,
-      attrs,
-      apis,
-      impls,
-      "end"
-    ]
-    |> :lists.flatten()
-    |> Enum.intersperse("\n\n")
-  end
-
-  defp formatter_opts do
-    file = ".formatter.exs"
-
-    if File.regular?(file) do
-      {opts, _} = Code.eval_file(file)
-      opts
+  defp resolve_path(module, mount, options) do
+    if Map.has_key?(options, :path) do
+      Map.fetch!(options, :path)
     else
-      []
+      case Mount.preferred_path(mount, module) do
+        {:ok, path} ->
+          path
+
+        {:error, :not_mounted} ->
+          CLI.halt_error(
+            "Could not figure out path for module #{inspect(module)}. Please provide the --path option."
+          )
+      end
     end
   end
 
-  defp reverse_lists([list | rest]) do
-    [:lists.reverse(list) | reverse_lists(rest)]
-  end
-
-  defp reverse_lists([]) do
-    []
+  @doc false
+  def cast_mod(v) do
+    {:ok, Module.concat([v])}
   end
 end

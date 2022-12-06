@@ -26,13 +26,13 @@ defmodule Modkit.EnvTest do
                  # here is where we match on the Modkit's mix.exs file in test
                  # env instead of having FakeApp.
                  prefix: Modkit,
-                 splitfix: ["Modkit"]
+                 pre_split: ["Modkit"]
                },
                %Modkit.Mount.Point{
                  flavor: :mix_task,
                  path: "lib/mix/tasks",
                  prefix: Mix.Tasks,
-                 splitfix: ["Mix", "Tasks"]
+                 pre_split: ["Mix", "Tasks"]
                }
              ]
            } == Modkit.Config.mount(project_config)
@@ -41,8 +41,8 @@ defmodule Modkit.EnvTest do
   test "a custom mount is available in config" do
     assert %Modkit.Mount{
              points: [
-               %Modkit.Mount.Point{flavor: :elixir, path: "b", prefix: B, splitfix: ["B"]},
-               %Modkit.Mount.Point{flavor: :elixir, path: "a", prefix: A, splitfix: ["A"]}
+               %Modkit.Mount.Point{flavor: :elixir, path: "b", prefix: B, pre_split: ["B"]},
+               %Modkit.Mount.Point{flavor: :elixir, path: "a", prefix: A, pre_split: ["A"]}
              ]
            } ==
              Modkit.Config.mount(

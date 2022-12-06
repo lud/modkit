@@ -1,103 +1,117 @@
 defmodule Modkit.MountTest do
-  use ExUnit.Case, async: true
   alias Modkit.Mount
-  alias Modkit.Mount.Point
+  use ExUnit.Case, async: true
 
-  test "a point can be defined in the configuration" do
-    assert %Point{
-             path: "test/support",
-             prefix: App.Test,
-             splitfix: ["App", "Test"],
-             flavor: :elixir
-           } == Point.new({App.Test, "test/support"})
+  test "mount points can be defined" do
+    assert {:ok, _} = Mount.define([])
+    assert {:ok, _} = Mount.define([{AAA, "lib/aaa"}])
 
-    assert %Point{
-             path: "lib/app_web",
-             prefix: AppWeb,
-             splitfix: ["AppWeb"],
-             flavor: :phoenix
-           } == Point.new({AppWeb, {:phoenix, "lib/app_web"}})
+    assert {:error, ":mount config option must be a list of points" <> _} = Mount.define(:hello)
+    assert {:error, "invalid point in :mount config option, got: " <> _} = Mount.define([:hello])
+
+    assert {:error, "invalid point in :mount config option, got: " <> _} =
+             Mount.define([{AAA, "hello", flavor: :dunk}])
   end
 
-  test "mount point config error" do
-    assert_raise ArgumentError, fn ->
-      Point.new(MyApp)
+  test "a point can be found for a module" do
+    {:ok, mount} = Mount.define([])
+    assert {:error, :not_mounted} = Mount.resolve(mount, AAA)
+
+    {:ok, mount} = Mount.define([{AAA, "lib/aaa"}])
+    assert {:error, :not_mounted} = Mount.resolve(mount, BBB)
+    assert {:ok, %{prefix: AAA}} = Mount.resolve(mount, AAA)
+  end
+
+  test "order of mount is not important, automatic precedence is handled" do
+    # we test both orders
+
+    check = fn points ->
+      {:ok, mount} = Mount.define(points)
+
+      assert {:ok, %{prefix: AAA}} = Mount.resolve(mount, AAA)
+      assert {:ok, %{prefix: AAA.BBB}} = Mount.resolve(mount, AAA.BBB)
     end
+
+    # less precision first
+    check.([
+      {AAA, "lib/aaa"},
+      {AAA.BBB, "lib/aaa/bbb"}
+    ])
+
+    # more precision first
+    check.([
+      {AAA.BBB, "lib/aaa/bbb"},
+      {AAA, "lib/aaa"}
+    ])
   end
 
-  test "it is possible to append a mount point or a spec" do
-    assert %Point{
-             path: "lib/app",
-             prefix: App,
-             splitfix: ["App"],
-             flavor: :elixir
-           } == Point.new({App, "lib/app"})
+  test "flavour is not important when resolving" do
+    check = fn points ->
+      {:ok, mount} = Mount.define(points)
 
-    m = Mount.new()
-
-    assert Mount.add(m, {App, "lib/app"}) ==
-             Mount.add(m, %Point{
-               path: "lib/app",
-               prefix: App,
-               splitfix: ["App"],
-               flavor: :elixir
-             })
-  end
-
-  test "mount points are ordered" do
-    # Mount points are resolved in definition order, because there can be an
-    # overlap betweed them. The library automatically sort them by common prefix
-    mount =
-      Mount.new()
-      |> Mount.add({A.B.C, "test/support/sub-1"})
-      |> Mount.add({A, "test/support"})
-      |> Mount.add({A.B, "test/support/sub-1/sub-2"})
-      |> Mount.add({X, "lib/stuff/xxx-1"})
-      |> Mount.add({X.Y, "lib/stuff/xxx-1/xxx-2"})
-
-    prefixs = Enum.map(mount.points, & &1.prefix)
-
-    assert [X.Y, X, A.B.C, A.B, A] == prefixs
-  end
-
-  test "add mount points with duplicate prefix" do
-    mount =
-      Mount.new()
-      |> Mount.add({A, "test/support/sub-1"})
-      |> Mount.add({A, "test/support/sub-1"})
-
-    assert 1 == length(mount.points)
-
-    assert_raise ArgumentError, ~r/already/, fn ->
-      Mount.new()
-      |> Mount.add({A, "test/support/sub-1"})
-      |> Mount.add({A, "other-path"})
+      assert {:ok, %{prefix: AAA}} = Mount.resolve(mount, AAA)
+      assert {:ok, %{prefix: AAA.BBB}} = Mount.resolve(mount, AAA.BBB)
     end
+
+    check.([
+      {AAA, "lib/aaa", flavor: :phoenix},
+      {AAA.BBB, "lib/aaa/bbb"}
+    ])
+
+    check.([
+      {AAA, "lib/aaa"},
+      {AAA.BBB, "lib/aaa/bbb", flavor: :phoenix}
+    ])
+
+    check.([
+      {AAA.BBB, "lib/aaa/bbb", flavor: :phoenix},
+      {AAA, "lib/aaa"}
+    ])
+
+    check.([
+      {AAA.BBB, "lib/aaa/bbb"},
+      {AAA, "lib/aaa", flavor: :phoenix}
+    ])
   end
 
-  test "add mount points with duplicate path" do
-    # This is actually OK
-    mount =
-      Mount.new()
-      |> Mount.add({AAAA, "test/support/sub-1"})
-      |> Mount.add({BBBB, "test/support/sub-1"})
+  test "a mount point can give a new path" do
+    {:ok, mount} = Mount.define([{AAA, "lib/aaa"}])
 
-    assert 2 == length(mount.points)
+    assert {:ok, "lib/aaa.ex"} = Mount.preferred_path(mount, AAA)
+    assert {:ok, "lib/aaa/bbb.ex"} = Mount.preferred_path(mount, AAA.BBB)
+    assert {:ok, "lib/aaa/bbb/hello_world.ex"} = Mount.preferred_path(mount, AAA.BBB.HelloWorld)
   end
 
-  test "a point can tell if it is a prefix of a splitlist" do
-    assert %Point{
-             path: "lib/a/b/c",
-             prefix: A.B.C,
-             splitfix: ["A", "B", "C"],
-             flavor: :elixir
-           } = point = Point.new({A.B.C, "lib/a/b/c"})
+  test "the phoenix flavor has special cases" do
+    {:ok, mount} = Mount.define([{App, "lib/app", flavor: :phoenix}])
 
-    assert Point.prefix_of?(point, ["A", "B", "C"])
-    assert Point.prefix_of?(point, ["A", "B", "C", "D"])
+    check = fn expected_path, module ->
+      assert {:ok, expected_path} == Mount.preferred_path(mount, module)
+    end
 
-    refute Point.prefix_of?(point, ["A", "B", "D"])
-    refute Point.prefix_of?(point, ["X", "A", "B"])
-    refute Point.prefix_of?(point, ["X", "A", "B", "C"])
+    check.("lib/app.ex", App)
+    check.("lib/app/other.ex", App.Other)
+
+    check.("lib/app/views/some_view.ex", App.SomeView)
+    check.("lib/app/controllers/some_controller.ex", App.SomeController)
+    check.("lib/app/components/multi_components.ex", App.MultiComponents)
+    check.("lib/app/components/some_component.ex", App.SomeComponent)
+    check.("lib/app/components/layouts.ex", App.Layouts)
+    check.("lib/app/live/some_live.ex", App.SomeLive)
+    check.("lib/app/controllers/some_html.ex", App.SomeHTML)
+    check.("lib/app/controllers/some_json.ex", App.SomeJSON)
+    check.("lib/app/channels/some_channel.ex", App.SomeChannel)
+    check.("lib/app/channels/some_socket.ex", App.SomeSocket)
+  end
+
+  test "the mix task flavor uses dots for the last segment" do
+    {:ok, mount} = Mount.define([{Mix.Tasks, "lib/mix/tasks", flavor: :mix_task}])
+
+    check = fn expected_path, module ->
+      assert {:ok, expected_path} == Mount.preferred_path(mount, module)
+    end
+
+    check.("lib/mix/tasks/my_task.ex", Mix.Tasks.MyTask)
+    check.("lib/mix/tasks/my.task.ex", Mix.Tasks.My.Task)
   end
 end

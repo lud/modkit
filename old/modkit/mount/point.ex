@@ -8,7 +8,7 @@ defmodule Modkit.Mount.Point do
     :prefix,
 
     # This is the splitted version of the prefix, containing binaries
-    :splitfix,
+    :pre_split,
 
     # This is the mount path for the prefix.
     :path,
@@ -24,7 +24,7 @@ defmodule Modkit.Mount.Point do
   @type point_spec :: {module, path_spec}
   @type t :: %__MODULE__{
           prefix: module,
-          splitfix: [binary],
+          pre_split: [binary],
           path: binary,
           flavor: flavor
         }
@@ -53,11 +53,11 @@ defmodule Modkit.Mount.Point do
 
   defp _new(prefix, flavor, path)
        when is_atom(prefix) and flavor in @flavors and is_binary(path) do
-    %__MODULE__{prefix: prefix, flavor: flavor, splitfix: Module.split(prefix), path: path}
+    %__MODULE__{prefix: prefix, flavor: flavor, pre_split: Module.split(prefix), path: path}
   end
 
   @spec prefix_of?(t, [binary]) :: boolean()
-  def prefix_of?(%Point{splitfix: splitfix}, modsplit) when is_list(modsplit) do
-    List.starts_with?(modsplit, splitfix)
+  def prefix_of?(%Point{pre_split: pre_split}, modsplit) when is_list(modsplit) do
+    List.starts_with?(modsplit, pre_split)
   end
 end

@@ -11,7 +11,6 @@ defmodule Modkit.MixProject do
       deps: deps(),
       docs: docs(),
       package: package(),
-      modkit: modkit(),
       source_url: "https://github.com/lud/modkit"
     ]
   end
@@ -24,6 +23,7 @@ defmodule Modkit.MixProject do
 
   defp deps do
     [
+      {:cli_mate, "~> 0.1", path: "../cli_mate", runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.28.0", only: [:dev, :test], runtime: false},
@@ -34,16 +34,6 @@ defmodule Modkit.MixProject do
   defp docs do
     [
       filter_modules: fn mod, _ -> "Sample" not in Module.split(mod) end
-    ]
-  end
-
-  defp modkit do
-    [
-      mount: [
-        {Modkit, "lib/modkit"},
-        {Modkit.Sample, "lib/modkit/sample"},
-        {Mix.Tasks, {:mix_task, "lib/mix/tasks"}}
-      ]
     ]
   end
 
