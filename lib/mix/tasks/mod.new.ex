@@ -46,8 +46,6 @@ defmodule Mix.Tasks.Mod.New do
     ]
   ]
 
-  @usage CLI.format_usage(@command, format: :moduledoc)
-
   @moduledoc """
   Creates a new module in the current application, based on a template.
 
@@ -61,18 +59,14 @@ defmodule Mix.Tasks.Mod.New do
         {Mix.Tasks, "lib/mix/tasks", flavor: :mix_task}
       ]
 
-  #{@usage}
+  #{CLI.format_usage(@command, format: :moduledoc)}
   """
 
   @impl Mix.Task
   def run(argv) do
     Mix.Task.run("app.config")
 
-    command =
-      CLI.parse_or_halt!(
-        argv,
-        @command
-      )
+    command = CLI.parse_or_halt!(argv, @command)
 
     %{mount: mount} = Modkit.load_current_project()
     %{options: options, arguments: arguments} = command

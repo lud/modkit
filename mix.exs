@@ -23,7 +23,7 @@ defmodule Modkit.MixProject do
 
   defp deps do
     [
-      {:cli_mate, "~> 0.1", path: "../cli_mate", runtime: false},
+      {:cli_mate, "~> 0.1", runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.28.0", only: [:dev, :test], runtime: false},
