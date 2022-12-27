@@ -136,11 +136,9 @@ defmodule Mix.Tasks.Mod.Relocate do
       [
         "\n  move ",
         common,
-        ?/,
         CLI.color(:red, bad_rest),
         "\n  to   ",
         common,
-        ?/,
         CLI.color(:green, good_rest)
       ]
     ])
@@ -157,8 +155,8 @@ defmodule Mix.Tasks.Mod.Relocate do
   defp deviate_path(from_rest, to_rest, acc) do
     common_path =
       case acc do
-        [] -> "."
-        list -> Path.join(:lists.reverse(list))
+        [] -> ""
+        list -> [Path.join(:lists.reverse(list)), ?/]
       end
 
     {Path.join(from_rest), Path.join(to_rest), common_path}
