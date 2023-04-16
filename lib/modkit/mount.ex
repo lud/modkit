@@ -119,14 +119,19 @@ defmodule Modkit.Mount do
   end
 
   def preferred_path(mount, module) when is_atom(module) do
-    modsplit = Module.split(module)
-
-    with {:ok, point} <- resolve(mount, modsplit) do
+    with {:ok, modsplit} <- split_mod(module),
+         {:ok, point} <- resolve(mount, modsplit) do
       path_rest = unprefix(modsplit, point.pre_split)
       sub_path = create_path(path_rest, point.flavor)
       path = Path.join(:lists.flatten([point.path, sub_path])) <> ".ex"
       {:ok, path}
     end
+  end
+
+  defp split_mod(module) do
+    {:ok, Module.split(module)}
+  rescue
+    _ in ArgumentError -> {:error, :not_elixir}
   end
 
   defp unprefix([a | modrest], [a | prefrest]) do

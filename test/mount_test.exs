@@ -114,4 +114,15 @@ defmodule Modkit.MountTest do
     check.("lib/mix/tasks/my_task.ex", Mix.Tasks.MyTask)
     check.("lib/mix/tasks/my.task.ex", Mix.Tasks.My.Task)
   end
+
+  test "a mounted prefix ignores shorter modules" do
+    {:ok, mount} = Mount.define([{AAA.BBB, "lib/aaa/bbb"}])
+
+    assert {:error, :not_mounted} = Mount.preferred_path(mount, AAA)
+  end
+
+  test "erlang modules are safely ingored" do
+    assert {:ok, mount} = Mount.define([])
+    assert {:error, :not_elixir} = Mount.preferred_path(mount, :crypto)
+  end
 end
