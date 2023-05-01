@@ -82,7 +82,7 @@ defmodule Mix.Tasks.Mod.New do
       cond do
         not File.exists?(path) -> true
         options.overwrite -> true
-        Mix.shell().yes?("File #{path} exists, overwrite?") -> true
+        Mix.shell().yes?("File #{path} exists, overwrite?", default: :no) -> true
         :_ -> false
       end
 
