@@ -69,7 +69,10 @@ defmodule Modkit.Mod do
   """
 
   def local_root([_ | _] = list) do
-    with_splits = Enum.map(list, &{&1, Module.split(&1)})
+    with_splits =
+      list
+      |> Enum.reject(&protocol_impl?/1)
+      |> Enum.map(&{&1, Module.split(&1)})
 
     found =
       Enum.find(with_splits, nil, fn {_, parent_split} ->
@@ -86,5 +89,14 @@ defmodule Modkit.Mod do
 
   def local_root([]) do
     nil
+  end
+
+  defp protocol_impl?(mod) do
+    # If we cannot load we bail. Maybe someone is trying to compare atoms and
+    # not actual modules.
+    case Code.ensure_loaded(mod) do
+      {:module, ^mod} -> function_exported?(mod, :__impl__, 1)
+      _ -> false
+    end
   end
 end

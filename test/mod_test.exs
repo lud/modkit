@@ -34,4 +34,39 @@ defmodule Modkit.ModTest do
     # prefix". Here we want a module that exists, not just a prefix.
     assert AAA = Mod.local_root(AAA, AAA.BBB)
   end
+
+  test "local root works with a single module" do
+    assert AAA = Mod.local_root([AAA])
+  end
+
+  defmodule EmbeddedImpl do
+    defstruct a: 1
+
+    defimpl String.Chars do
+      def to_string(_) do
+        "hello"
+      end
+    end
+  end
+
+  defmodule OutImpl do
+    defstruct a: 1
+  end
+
+  defimpl String.Chars, for: OutImpl do
+    def to_string(_) do
+      "hello"
+    end
+  end
+
+  test "get a local root will ignore protocol implementations" do
+    assert "hello" == to_string(%EmbeddedImpl{})
+    assert "hello" == to_string(%OutImpl{})
+
+    assert EmbeddedImpl ==
+             Mod.local_root([EmbeddedImpl, String.Chars.Modkit.ModTest.EmbeddedImpl])
+
+    assert OutImpl ==
+             Mod.local_root([OutImpl, String.Chars.Modkit.ModTest.OutImpl])
+  end
 end
