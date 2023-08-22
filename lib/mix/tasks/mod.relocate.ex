@@ -41,8 +41,6 @@ defmodule Mix.Tasks.Mod.Relocate do
 
   @impl Mix.Task
   def run(argv) do
-    Mix.Task.run("app.config")
-
     command =
       CLI.parse_or_halt!(
         argv,

@@ -64,8 +64,6 @@ defmodule Mix.Tasks.Mod.New do
 
   @impl Mix.Task
   def run(argv) do
-    Mix.Task.run("app.config")
-
     command = CLI.parse_or_halt!(argv, @command)
 
     %{mount: mount} = Modkit.load_current_project()
