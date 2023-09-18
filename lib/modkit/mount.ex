@@ -49,11 +49,13 @@ defmodule Modkit.Mount do
     {:error, ":mount config option must be a list of points, got: #{inspect(other)}"}
   end
 
-  def define_point({prefix, path} = p) when is_atom(prefix) and is_binary(path) do
+  def define_point({prefix, path} = p)
+      when is_atom(prefix) and (is_binary(path) or path == :ignore) do
     define_point(prefix, path, [], p)
   end
 
-  def define_point({prefix, path, opts} = p) do
+  def define_point({prefix, path, opts} = p)
+      when is_atom(prefix) and (is_binary(path) or path == :ignore) and is_list(opts) do
     define_point(prefix, path, opts, p)
   end
 
@@ -62,7 +64,7 @@ defmodule Modkit.Mount do
   end
 
   defp define_point(prefix, path, opts, original)
-       when is_atom(prefix) and is_binary(path) and is_list(opts) do
+       when is_atom(prefix) and (is_binary(path) or path == :ignore) and is_list(opts) do
     flavor = Keyword.get(opts, :flavor, :elixir)
 
     with :ok <- validate(flavor in @flavors, {:invalid_flavor, flavor}) do
@@ -96,7 +98,10 @@ defmodule Modkit.Mount do
 
   def resolve([p | points], mod_split) when is_list(mod_split) do
     if prefix_of?(p, mod_split) do
-      {:ok, p}
+      case p do
+        %{path: :ignore} -> :ignore
+        _ -> {:ok, p}
+      end
     else
       resolve(points, mod_split)
     end

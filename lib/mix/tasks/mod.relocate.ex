@@ -47,6 +47,11 @@ defmodule Mix.Tasks.Mod.Relocate do
         @command
       )
 
+    {__MODULE__, _, cpath} = :code.get_object_code(__MODULE__)
+    dir = Path.dirname(cpath)
+    Mix.Task.run("app.config")
+    Code.prepend_path(dir)
+
     %{mount: mount, otp_app: otp_app} = Modkit.load_current_project()
     %{options: options} = command
 
@@ -75,7 +80,10 @@ defmodule Mix.Tasks.Mod.Relocate do
       {:ok, pref} ->
         {:move, module, file, pref}
 
-      _ ->
+      :ignore ->
+        :skip
+
+      {:error, :not_mounted} ->
         warn_no_path(module)
         :skip
     end

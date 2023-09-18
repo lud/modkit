@@ -125,4 +125,9 @@ defmodule Modkit.MountTest do
     assert {:ok, mount} = Mount.define([])
     assert {:error, :not_elixir} = Mount.preferred_path(mount, :crypto)
   end
+
+  test "it is possible to mount a prefix as :ignore" do
+    assert {:ok, mount} = Mount.define([{AAA, :ignore}])
+    assert :ignore = Mount.resolve(mount, AAA)
+  end
 end

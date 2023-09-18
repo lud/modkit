@@ -12,6 +12,8 @@ defmodule Modkit.MixProject do
       deps: deps(),
       docs: docs(),
       package: package(),
+      modkit: modkit(),
+      versioning: versioning(),
       source_url: "https://github.com/lud/modkit"
     ]
   end
@@ -44,6 +46,33 @@ defmodule Modkit.MixProject do
       links: %{
         "Github" => "https://github.com/lud/modkit"
       }
+    ]
+  end
+
+  defp modkit do
+    [
+      mount: [
+        {Modkit, "lib/modkit"},
+        {Mix.Tasks, "lib/mix/tasks", flavor: :mix_task},
+        {Samples, :ignore}
+      ]
+    ]
+  end
+
+  defp versioning do
+    [
+      annotate: true,
+      before_commit: [
+        fn vsn ->
+          case System.cmd("git", ["cliff", "--tag", vsn, "-o", "CHANGELOG.md"],
+                 stderr_to_stdout: true
+               ) do
+            {_, 0} -> IO.puts("Updated CHANGELOG.md with #{vsn}")
+            {out, _} -> {:error, "Could not update CHANGELOG.md:\n\n #{out}"}
+          end
+        end,
+        add: "CHANGELOG.md"
+      ]
     ]
   end
 end
