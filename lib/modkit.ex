@@ -19,9 +19,7 @@ defmodule Modkit do
   defp main_module_from_current_project() do
     Mix.Project.get!()
     |> Module.split()
-    |> :lists.reverse()
-    |> then(fn ["MixProject" | rest] -> rest end)
-    |> :lists.reverse()
+    |> Enum.slice(0..-2//1)
     |> Module.concat()
   end
 
