@@ -1,11 +1,11 @@
 defmodule Modkit.ModTemplateTest do
-  use ExUnit.Case, async: true
-  alias Modkit.Mod.Template.UnitTestTemplate
-  alias Modkit.Mod.Template.MixTaskTemplate
-  alias Modkit.Mod.Template.DynamicSupervisorTemplate
-  alias Modkit.Mod.Template.SupervisorTemplate
-  alias Modkit.Mod.Template.GenServerTemplate
   alias Modkit.Mod.Template
+  alias Modkit.Mod.Template.DynamicSupervisorTemplate
+  alias Modkit.Mod.Template.GenServerTemplate
+  alias Modkit.Mod.Template.MixTaskTemplate
+  alias Modkit.Mod.Template.SupervisorTemplate
+  alias Modkit.Mod.Template.UnitTestTemplate
+  use ExUnit.Case, async: true
 
   test "a module can be generated" do
     assert Template.render(TestArea) =~ "defmodule TestArea do"

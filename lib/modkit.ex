@@ -1,6 +1,6 @@
 defmodule Modkit do
-  alias Modkit.SnakeCase
   alias Modkit.Mount
+  alias Modkit.SnakeCase
 
   def load_current_project do
     config = Mix.Project.config()
@@ -16,7 +16,7 @@ defmodule Modkit do
     %{otp_app: otp_app, mount: mount}
   end
 
-  defp main_module_from_current_project() do
+  defp main_module_from_current_project do
     Mix.Project.get!()
     |> Module.split()
     |> Enum.slice(0..-2//1)

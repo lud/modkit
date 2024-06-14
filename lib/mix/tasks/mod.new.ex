@@ -1,7 +1,7 @@
 defmodule Mix.Tasks.Mod.New do
+  alias Modkit.CLI
   alias Modkit.Mod.Template
   alias Modkit.Mount
-  alias Modkit.CLI
   use Mix.Task
 
   @shortdoc "Relocate all modules in the current application"

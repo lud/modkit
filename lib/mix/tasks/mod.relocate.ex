@@ -1,7 +1,7 @@
 defmodule Mix.Tasks.Mod.Relocate do
-  alias Modkit.Mount
-  alias Modkit.Mod
   alias Modkit.CLI
+  alias Modkit.Mod
+  alias Modkit.Mount
   use Mix.Task
 
   @shortdoc "Relocate all modules in the current application"
@@ -12,12 +12,14 @@ defmodule Mix.Tasks.Mod.Relocate do
       interactive: [
         type: :boolean,
         short: :i,
+        default: false,
         doc:
           "This flag will make the command prompt for confirmation whenever a file can be relocated. Takes precedences over `--force`."
       ],
       force: [
         type: :boolean,
         short: :f,
+        default: false,
         doc: "This flag will make the command actually relocate the files."
       ]
     ]
@@ -109,7 +111,7 @@ defmodule Mix.Tasks.Mod.Relocate do
         {:exists, module, pref_path}
 
       itr? ->
-        if(ask_move(module, cur_path, pref_path)) do
+        if ask_move(module, cur_path, pref_path) do
           move(module, cur_path, pref_path)
         else
           :cancel

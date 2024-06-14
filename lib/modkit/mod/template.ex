@@ -10,9 +10,8 @@ defmodule Modkit.Mod.Template do
     |> :erlang.iolist_to_binary()
   end
 
-  @moduledoc """
-  TODO describe the purpose of this module.
-  """
+  @moduledoc false
+
   defmodule BaseModule do
     def template do
       """

@@ -67,10 +67,12 @@ defmodule Modkit.Mount do
        when is_atom(prefix) and (is_binary(path) or path == :ignore) and is_list(opts) do
     flavor = Keyword.get(opts, :flavor, :elixir)
 
-    with :ok <- validate(flavor in @flavors, {:invalid_flavor, flavor}) do
-      {:ok, %Point{prefix: prefix, path: path, pre_split: Module.split(prefix), flavor: flavor}}
-    else
-      {:error, reason} -> invalid_point(original, reason)
+    case validate(flavor in @flavors, {:invalid_flavor, flavor}) do
+      :ok ->
+        {:ok, %Point{prefix: prefix, path: path, pre_split: Module.split(prefix), flavor: flavor}}
+
+      {:error, reason} ->
+        invalid_point(original, reason)
     end
   end
 
