@@ -4,7 +4,9 @@ run:
 install: reinstall
 
 reinstall: uninstall test
+    mix clean
     mix deps.get
+    mix compile --force
     mix test && mix archive.install --force
 
 uninstall:
