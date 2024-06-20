@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2024-06-20
+
+### Bug Fixes
+
+- Allow any module name in mix.exs file
+
+### Documentation
+
+- Fix warnings in docs generation
+
 ## [0.5.1] - 2023-09-18
 
 ### Features
