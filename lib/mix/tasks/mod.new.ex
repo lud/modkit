@@ -4,7 +4,7 @@ defmodule Mix.Tasks.Mod.New do
   alias Modkit.Mount
   use Mix.Task
 
-  @shortdoc "Relocate all modules in the current application"
+  @shortdoc "Creates a new module in the current application"
 
   @command [
     module: __MODULE__,
