@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.1] - 2024-11-18
+
+### Bug Fixes
+
+- Shortdoc for mod.new
+
 ## [0.6.0] - 2024-06-20
 
 ### Bug Fixes
