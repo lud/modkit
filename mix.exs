@@ -13,6 +13,7 @@ defmodule Modkit.MixProject do
       docs: docs(),
       package: package(),
       modkit: modkit(),
+      dialyzer: dialyzer(),
       versioning: versioning(),
       source_url: "https://github.com/lud/modkit"
     ]
@@ -72,6 +73,15 @@ defmodule Modkit.MixProject do
         end,
         add: "CHANGELOG.md"
       ]
+    ]
+  end
+
+  defp dialyzer do
+    [
+      flags: [:unmatched_returns, :error_handling, :unknown, :extra_return],
+      list_unused_filters: true,
+      plt_add_apps: [:mix],
+      plt_local_path: "_build/plts"
     ]
   end
 end
