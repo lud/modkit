@@ -172,24 +172,35 @@ defmodule Modkit.Mount do
   defp path_segment(segment, :phoenix) do
     basename = path_segment(segment, :elixir)
 
-    cond do
-      # components
-      segment == "Layouts" -> ["components", basename]
-      String.ends_with?(segment, "Component") -> ["components", basename]
-      String.ends_with?(segment, "Components") -> ["components", basename]
+    matchers = [
+      {fn -> segment == "Layouts" end, ["components", basename]},
+      {fn -> String.ends_with?(segment, "Component") end, ["components", basename]},
+      {fn -> String.ends_with?(segment, "Components") end, ["components", basename]},
       # controllers
-      String.ends_with?(segment, "Controller") -> ["controllers", basename]
-      String.ends_with?(segment, "HTML") -> ["controllers", basename]
-      String.ends_with?(segment, "JSON") -> ["controllers", basename]
+      {fn -> String.ends_with?(segment, "Controller") end, ["controllers", basename]},
+      {fn -> String.ends_with?(segment, "HTML") end, ["controllers", basename]},
+      {fn -> String.ends_with?(segment, "JSON") end, ["controllers", basename]},
       # live
-      String.ends_with?(segment, "Live") -> ["live", basename]
+      {fn -> String.ends_with?(segment, "Live") end, ["live", basename]},
       # views
-      String.ends_with?(segment, "View") -> ["views", basename]
+      {fn -> String.ends_with?(segment, "View") end, ["views", basename]},
       # channels
-      String.ends_with?(segment, "Channel") -> ["channels", basename]
-      String.ends_with?(segment, "Socket") -> ["channels", basename]
-      # *
-      :other -> basename
+      {fn -> String.ends_with?(segment, "Channel") end, ["channels", basename]},
+      {fn -> String.ends_with?(segment, "Socket") end, ["channels", basename]}
+    ]
+
+    found =
+      Enum.find(matchers, fn {match, result} ->
+        if match.() do
+          result
+        else
+          nil
+        end
+      end)
+
+    case found do
+      {_, result} -> result
+      nil -> basename
     end
   end
 

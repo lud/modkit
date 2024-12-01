@@ -80,7 +80,7 @@ defmodule Modkit.MixProject do
     [
       flags: [:unmatched_returns, :error_handling, :unknown, :extra_return],
       list_unused_filters: true,
-      plt_add_apps: [:mix],
+      plt_add_apps: [:mix, :eex],
       plt_local_path: "_build/plts"
     ]
   end
