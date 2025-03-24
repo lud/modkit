@@ -88,6 +88,9 @@ defmodule Mix.Tasks.Mod.Relocate do
       {:error, :not_mounted} ->
         warn_no_path(module)
         :skip
+
+      {:error, :not_elixir} ->
+        :skip
     end
   end
 
