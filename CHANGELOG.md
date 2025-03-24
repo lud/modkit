@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.2] - 2025-03-24
+
+### Bug Fixes
+
+- Ignore Erlang modules when relocating
+
+### Miscellaneous Tasks
+
+- Update dependabot config (#2)
+- Update CI config (#3)
+- Update Elixir workflow (#6)
+- Update Elixir workflow (#7)
+- Update dependabot config (#8)
+- Update Elixir workflow (#13)
+- Update Elixir workflow (#14)
+
 ## [0.6.1] - 2024-11-18
 
 ### Bug Fixes
