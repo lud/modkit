@@ -13,5 +13,9 @@ uninstall:
     rm -vf *ez
     mix archive.uninstall modkit --force
 
+regen-cli:
+  mix cli.embed Modkit.CLI lib/modkit/cli --no-moduledoc -f -y
+  mix do clean + format
+
 test:
     mix test

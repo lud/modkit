@@ -41,6 +41,8 @@ defmodule Mix.Tasks.Mod.Relocate do
   #{@usage}
   """
 
+  @requirements ["loadpaths"]
+
   @impl Mix.Task
   def run(argv) do
     command =
@@ -147,10 +149,10 @@ defmodule Mix.Tasks.Mod.Relocate do
       [
         "\n  move ",
         common,
-        CLI.color(:red, bad_rest),
+        CLI.color(bad_rest, :red),
         "\n  to   ",
         common,
-        CLI.color(:green, good_rest)
+        CLI.color(good_rest, :green)
       ]
     ])
   end

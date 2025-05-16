@@ -62,6 +62,8 @@ defmodule Mix.Tasks.Mod.New do
   #{CLI.format_usage(@command, format: :moduledoc)}
   """
 
+  @requirements ["loadpaths"]
+
   @impl Mix.Task
   def run(argv) do
     command = CLI.parse_or_halt!(argv, @command)
