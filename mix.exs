@@ -30,7 +30,8 @@ defmodule Modkit.MixProject do
       {:cli_mate, "~> 0.8.2", runtime: false, only: [:dev, :test]},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
-      {:ex_doc, ">= 0.0.0", only: [:dev, :test], runtime: false}
+      {:ex_doc, ">= 0.0.0", only: [:dev, :test], runtime: false},
+      {:ex_check, ">= 0.0.0", only: [:dev, :test], runtime: false}
     ]
   end
 
