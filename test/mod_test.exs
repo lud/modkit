@@ -17,8 +17,8 @@ defmodule Modkit.ModTest do
     assert Mod in mods
   end
 
-  test "listing modules by files" do
-    mods = Mod.list_by_file(:modkit)
+  test "grouping modules by files" do
+    mods = Mod.group_by_file(Mod.list_all(:modkit))
     assert Map.has_key?(mods, "lib/modkit.ex")
     assert [Modkit] == Map.fetch!(mods, "lib/modkit.ex")
     assert [Modkit] == Map.fetch!(mods, "lib/modkit.ex")

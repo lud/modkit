@@ -8,6 +8,7 @@ defmodule Modkit.MixProject do
       description: "A set of tool to work with Elixir modules files.",
       elixir: "~> 1.13",
       consolidate_protocols: Mix.env() != :test,
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       docs: docs(),
@@ -17,6 +18,14 @@ defmodule Modkit.MixProject do
       versioning: versioning(),
       source_url: "https://github.com/lud/modkit"
     ]
+  end
+
+  defp elixirc_paths(:prod) do
+    ["lib"]
+  end
+
+  defp elixirc_paths(_) do
+    ["lib", "test/support"]
   end
 
   def application do
@@ -54,6 +63,7 @@ defmodule Modkit.MixProject do
     [
       mount: [
         {Modkit, "lib/modkit"},
+        {Modkit.Support, "test/support"},
         {Mix.Tasks, "lib/mix/tasks", flavor: :mix_task},
         {Samples, :ignore}
       ]

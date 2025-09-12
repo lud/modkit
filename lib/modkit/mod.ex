@@ -1,7 +1,11 @@
 defmodule Modkit.Mod do
   def current_path(module, relative_to \\ File.cwd!()) do
-    source = Keyword.fetch!(module.module_info(:compile), :source) |> List.to_string()
-    Path.relative_to(source, relative_to)
+    if Code.ensure_loaded?(module) do
+      source = Keyword.fetch!(module.module_info(:compile), :source) |> List.to_string()
+      Path.relative_to(source, relative_to)
+    else
+      raise ArgumentError, "could not find module #{inspect(module)}"
+    end
   end
 
   def list_all(otp_app) do
@@ -18,10 +22,8 @@ defmodule Modkit.Mod do
     end
   end
 
-  def list_by_file(otp_app, relative_to \\ File.cwd!()) do
-    otp_app
-    |> list_all()
-    |> Enum.group_by(&current_path(&1, relative_to))
+  def group_by_file(modules, relative_to \\ File.cwd!()) do
+    Enum.group_by(modules, &current_path(&1, relative_to))
   end
 
   @doc """

@@ -22,6 +22,13 @@ defmodule Mix.Tasks.Mod.Relocate do
         default: false,
         doc: "This flag will make the command actually relocate the files."
       ]
+    ],
+    arguments: [
+      module: [
+        required: false,
+        cast: {__MODULE__, :cast_mod, []},
+        doc: "A single module to relocate. Defaults to all modules."
+      ]
     ]
   ]
 
@@ -52,10 +59,16 @@ defmodule Mix.Tasks.Mod.Relocate do
       )
 
     %{mount: mount, otp_app: otp_app} = Modkit.load_current_project()
-    %{options: options} = command
+    %{options: options, arguments: arguments} = command
 
-    otp_app
-    |> Mod.list_by_file()
+    modules =
+      case arguments do
+        %{module: m} -> [m]
+        _ -> Mod.list_all(otp_app)
+      end
+
+    modules
+    |> Mod.group_by_file()
     |> Stream.filter(&filter_dep/1)
     |> Stream.map(&build_move(&1, mount))
     |> Enum.filter(&(&1 != :skip))
@@ -63,6 +76,8 @@ defmodule Mix.Tasks.Mod.Relocate do
       [] -> CLI.success("Nothing to do")
       moves -> Enum.each(moves, &apply_move(&1, options))
     end
+  rescue
+    e -> CLI.halt_error(1, Exception.message(e))
   end
 
   defp filter_dep({file, _}) do
@@ -205,5 +220,10 @@ defmodule Mix.Tasks.Mod.Relocate do
 
   defp warn_no_path(module) do
     CLI.warn("Module #{inspect(module)} has no mount point in config")
+  end
+
+  @doc false
+  def cast_mod(v) do
+    {:ok, Module.concat([v])}
   end
 end

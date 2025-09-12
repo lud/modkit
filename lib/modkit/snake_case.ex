@@ -1,4 +1,6 @@
 defmodule Modkit.SnakeCase do
+  @moduledoc false
+
   def to_snake(segment, opts \\ []) when is_binary(segment) when is_atom(segment) do
     segment
     |> as_string()
@@ -8,11 +10,11 @@ defmodule Modkit.SnakeCase do
     |> remove_double_underscores()
   end
 
-  defp as_string(v) when is_binary(v) do
+  def as_string(v) when is_binary(v) do
     v
   end
 
-  defp as_string(a) when is_atom(a) do
+  def as_string(a) when is_atom(a) do
     case Atom.to_string(a) do
       "Elixir." <> rest -> rest
       v -> v
