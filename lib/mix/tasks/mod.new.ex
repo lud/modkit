@@ -62,10 +62,10 @@ defmodule Mix.Tasks.Mod.New do
   #{CLI.format_usage(@command, format: :moduledoc)}
   """
 
-  @requirements ["loadpaths"]
-
   @impl Mix.Task
   def run(argv) do
+    CLI.with_safe_path(:modkit, fn -> Mix.Task.run("app.config") end)
+
     command = CLI.parse_or_halt!(argv, @command)
 
     %{mount: mount} = Modkit.load_current_project()

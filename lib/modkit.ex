@@ -7,12 +7,15 @@ defmodule Modkit do
     otp_app = Keyword.fetch!(config, :app)
     default_root = main_module_from_current_project()
 
-    mount =
+    names = get_in(config, [:modkit, :names])
+
+    mount_points =
       case get_in(config, [:modkit, :mount]) do
-        nil -> Mount.define!(default_mount(otp_app, default_root, config))
-        v -> Mount.define!(v)
+        nil -> default_mount(otp_app, default_root, config)
+        v -> v
       end
 
+    mount = Mount.define!(mount_points, names: names)
     %{otp_app: otp_app, mount: mount}
   end
 

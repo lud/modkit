@@ -6,10 +6,13 @@ defmodule Modkit.MountTest do
     assert {:ok, _} = Mount.define([])
     assert {:ok, _} = Mount.define([{AAA, "lib/aaa"}])
 
-    assert {:error, ":mount config option must be a list of points" <> _} = Mount.define(:hello)
-    assert {:error, "invalid point in :mount config option, got: " <> _} = Mount.define([:hello])
+    assert {:error, %ArgumentError{message: ":mount config option must be a list of tuples" <> _}} =
+             Mount.define(:hello)
 
-    assert {:error, "invalid point in :mount config option, got: " <> _} =
+    assert {:error, %ArgumentError{message: "invalid point in :mount config option, got: " <> _}} =
+             Mount.define([:hello])
+
+    assert {:error, %ArgumentError{message: "invalid point in :mount config option, got: " <> _}} =
              Mount.define([{AAA, "hello", flavor: :dunk}])
   end
 
@@ -129,5 +132,15 @@ defmodule Modkit.MountTest do
   test "it is possible to mount a prefix as :ignore" do
     assert {:ok, mount} = Mount.define([{AAA, :ignore}])
     assert :ignore = Mount.resolve(mount, AAA)
+  end
+
+  test "mount supports the :names option" do
+    assert {:ok, mount} = Mount.define([{MyApp, "lib/my_app"}], names: [RabbitMQ: "rabbitmq"])
+
+    check = fn expected_path, module ->
+      assert {:ok, expected_path} == Mount.preferred_path(mount, module)
+    end
+
+    check.("lib/my_app/consumers/rabbitmq_consumer.ex", MyApp.Consumers.RabbitMQConsumer)
   end
 end

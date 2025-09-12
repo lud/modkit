@@ -20,73 +20,76 @@ defmodule Modkit.Mount do
     defstruct @enforce_keys
   end
 
-  def define!(points) do
-    case define(points) do
-      {:ok, mount} -> mount
-      {:error, reason} when is_binary(reason) -> raise ArgumentError, message: reason
-    end
-  end
+  @enforce_keys [:points, :to_snake]
+  defstruct @enforce_keys
 
-  def define([]) do
-    {:ok, []}
-  end
+  def define!(points, opts \\ [])
 
-  def define(raw_points) when is_list(raw_points) do
-    raw_points
-    |> Enum.reduce_while([], fn raw, acc ->
-      case define_point(raw) do
-        {:ok, point} -> {:cont, [point | acc]}
-        {:error, _} = err -> {:halt, err}
+  def define!(points, opts) when is_list(points) do
+    to_snake =
+      case opts[:names] do
+        nil -> &SnakeCase.to_snake/1
+        names -> fn segment -> SnakeCase.to_snake(segment, names: names) end
       end
-    end)
-    |> case do
-      {:error, _} = err -> err
-      points -> {:ok, Enum.sort(points, &sort_points/2)}
-    end
+
+    %__MODULE__{points: build_points(points), to_snake: to_snake}
   end
 
-  def define(other) do
-    {:error, ":mount config option must be a list of points, got: #{inspect(other)}"}
+  def define!(other, _opts) do
+    raise ArgumentError, ":mount config option must be a list of tuples, got: #{inspect(other)}"
   end
 
-  def define_point({prefix, path} = p)
-      when is_atom(prefix) and (is_binary(path) or path == :ignore) do
-    define_point(prefix, path, [], p)
+  def define(raw_points, opts \\ [])
+
+  def define(points, opts) do
+    {:ok, define!(points, opts)}
+  rescue
+    e -> {:error, e}
   end
 
-  def define_point({prefix, path, opts} = p)
-      when is_atom(prefix) and (is_binary(path) or path == :ignore) and is_list(opts) do
-    define_point(prefix, path, opts, p)
+  defp build_points(raw_points) do
+    raw_points
+    |> Enum.map(&define_point!/1)
+    |> Enum.sort(&sort_points/2)
   end
 
-  def define_point(other) do
-    invalid_point(other)
+  defp define_point!({prefix, path} = p)
+       when is_atom(prefix) and (is_binary(path) or path == :ignore) do
+    define_point!(prefix, path, [], p)
   end
 
-  defp define_point(prefix, path, opts, original)
+  defp define_point!({prefix, path, opts} = p)
+       when is_atom(prefix) and (is_binary(path) or path == :ignore) and is_list(opts) do
+    define_point!(prefix, path, opts, p)
+  end
+
+  defp define_point!(other) do
+    invalid_point!(other)
+  end
+
+  defp define_point!(prefix, path, opts, original)
        when is_atom(prefix) and (is_binary(path) or path == :ignore) and is_list(opts) do
     flavor = Keyword.get(opts, :flavor, :elixir)
 
     case validate(flavor in @flavors, {:invalid_flavor, flavor}) do
-      :ok ->
-        {:ok, %Point{prefix: prefix, path: path, pre_split: Module.split(prefix), flavor: flavor}}
-
-      {:error, reason} ->
-        invalid_point(original, reason)
+      :ok -> %Point{prefix: prefix, path: path, pre_split: Module.split(prefix), flavor: flavor}
+      {:error, reason} -> invalid_point!(original, reason)
     end
   end
 
-  defp define_point(_, _, _, original) do
-    invalid_point(original)
+  defp define_point!(_, _, _, original) do
+    invalid_point!(original)
   end
 
-  defp invalid_point(point) do
-    {:error, "invalid point in :mount config option, got: #{inspect(point)}"}
+  @spec invalid_point!(term) :: no_return()
+  defp invalid_point!(point) do
+    raise ArgumentError, "invalid point in :mount config option, got: #{inspect(point)}"
   end
 
-  defp invalid_point(point, reason) do
-    {:error,
-     "invalid point in :mount config option, got: #{inspect(point)}, error: #{inspect(reason)}"}
+  @spec invalid_point!(term, term) :: no_return()
+  defp invalid_point!(point, reason) do
+    raise ArgumentError,
+          "invalid point in :mount config option, got: #{inspect(point)}, error: #{inspect(reason)}"
   end
 
   defp sort_points(%{pre_split: a}, %{pre_split: b}) do
@@ -94,22 +97,30 @@ defmodule Modkit.Mount do
     a > b
   end
 
-  def resolve(mount, module) when is_atom(module) do
-    resolve(mount, Module.split(module))
+  def resolve(%__MODULE__{} = mount, mod_split) do
+    resolve(mount.points, mod_split)
   end
 
-  def resolve([p | points], mod_split) when is_list(mod_split) do
+  def resolve(points, module) when is_atom(module) do
+    resolve(points, Module.split(module))
+  end
+
+  def resolve(points, mod_split) do
+    do_resolve(points, mod_split)
+  end
+
+  def do_resolve([p | points], mod_split) when is_list(mod_split) do
     if prefix_of?(p, mod_split) do
       case p do
         %{path: :ignore} -> :ignore
         _ -> {:ok, p}
       end
     else
-      resolve(points, mod_split)
+      do_resolve(points, mod_split)
     end
   end
 
-  def resolve([], mod_split) when is_list(mod_split) do
+  def do_resolve([], mod_split) when is_list(mod_split) do
     {:error, :not_mounted}
   end
 
@@ -125,14 +136,18 @@ defmodule Modkit.Mount do
     {:error, reason}
   end
 
-  def preferred_path(mount, module) when is_atom(module) do
-    with {:ok, modsplit} <- split_mod(module),
-         {:ok, point} <- resolve(mount, modsplit) do
-      path_rest = unprefix(modsplit, point.pre_split)
-      sub_path = create_path(path_rest, point.flavor)
-      path = Path.join(:lists.flatten([point.path, sub_path])) <> ".ex"
-      {:ok, path}
+  def preferred_path(%__MODULE__{} = mount, module) when is_atom(module) do
+    with {:ok, mod_split} <- split_mod(module),
+         {:ok, point} <- resolve(mount, mod_split) do
+      {:ok, point_to_path(point, mod_split, mount.to_snake)}
     end
+  end
+
+  defp point_to_path(point, mod_split, to_snake) do
+    path_rest = unprefix(mod_split, point.pre_split)
+    sub_path = path_segments(path_rest, point.flavor, to_snake)
+
+    Path.join(:lists.flatten([point.path, sub_path])) <> ".ex"
   end
 
   defp split_mod(module) do
@@ -149,28 +164,24 @@ defmodule Modkit.Mount do
     modrest
   end
 
-  defp create_path(segments, flavor) do
-    do_create_path(segments, flavor)
+  defp path_segments(segments, :mix_task, to_snake) do
+    Enum.map_join(segments, ".", to_snake)
   end
 
-  defp do_create_path(segments, :mix_task) do
-    Enum.map_join(segments, ".", &SnakeCase.to_snake/1)
+  defp path_segments([segment | rest], flavor, to_snake) do
+    [format_segment(segment, flavor, to_snake) | path_segments(rest, flavor, to_snake)]
   end
 
-  defp do_create_path([segment | rest], flavor) do
-    [path_segment(segment, flavor) | create_path(rest, flavor)]
-  end
-
-  defp do_create_path([], _) do
+  defp path_segments([], _, _) do
     []
   end
 
-  defp path_segment(segment, :elixir) do
-    SnakeCase.to_snake(segment)
+  defp format_segment(segment, :elixir, to_snake) do
+    to_snake.(segment)
   end
 
-  defp path_segment(segment, :phoenix) do
-    basename = path_segment(segment, :elixir)
+  defp format_segment(segment, :phoenix, to_snake) do
+    basename = format_segment(segment, :elixir, to_snake)
 
     matchers = [
       {fn -> segment == "Layouts" end, ["components", basename]},
@@ -202,9 +213,5 @@ defmodule Modkit.Mount do
       {_, result} -> result
       nil -> basename
     end
-  end
-
-  defp path_segment(segment, :mix_task) do
-    path_segment(segment, :elixir)
   end
 end

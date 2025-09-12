@@ -41,20 +41,15 @@ defmodule Mix.Tasks.Mod.Relocate do
   #{@usage}
   """
 
-  @requirements ["loadpaths"]
-
   @impl Mix.Task
   def run(argv) do
+    CLI.with_safe_path(:modkit, fn -> Mix.Task.run("app.config") end)
+
     command =
       CLI.parse_or_halt!(
         argv,
         @command
       )
-
-    {__MODULE__, _, cpath} = :code.get_object_code(__MODULE__)
-    dir = Path.dirname(cpath)
-    Mix.Task.run("app.config")
-    Code.prepend_path(dir)
 
     %{mount: mount, otp_app: otp_app} = Modkit.load_current_project()
     %{options: options} = command

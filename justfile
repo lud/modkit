@@ -3,11 +3,9 @@ run:
 
 install: reinstall
 
-reinstall: uninstall test
-    mix clean
-    mix deps.get
+reinstall: uninstall
     mix compile --force
-    mix test && mix archive.install --force
+    mix archive.install --force
 
 uninstall:
     rm -vf *ez
