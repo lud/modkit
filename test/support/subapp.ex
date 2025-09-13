@@ -1,30 +1,41 @@
 defmodule Modkit.Support.Subapp do
   alias Modkit.SnakeCase
   # The orginal copy of the app that is not modified, and under version control.
-  @source_dir Path.absname("priv/modkit_demo-master")
+  defp source_dir do
+    Path.absname("priv/modkit_demo-master")
+  end
 
   # The copy used and modified in tests, ignored by git
-  @target_dir Path.absname("tmp/modkit_demo")
+  defp target_dir do
+    Path.absname("_build/test/demo-app")
+  end
+
+  defp subapp_env do
+    %{"MIX_TEST" => nil, "MODKIT_DEP_ROOT" => Path.expand(File.cwd!())}
+  end
 
   defp source_path(subpath \\ []) do
-    Path.join([@source_dir | List.wrap(subpath)])
+    Path.join([source_dir() | List.wrap(subpath)])
   end
 
   defp target_path(subpath \\ []) do
-    Path.join([@target_dir | List.wrap(subpath)])
+    Path.join([target_dir() | List.wrap(subpath)])
   end
 
   def hard_reset do
     :ok = check_not_installed()
 
     _ = File.rm_rf!(target_path())
+    _ = File.mkdir_p!(Path.dirname(target_path()))
     _ = File.cp_r!(source_path(), target_path())
 
+    IO.puts("hard resetting subapp")
+
     {_, 0} =
-      System.cmd("mix", ~w"do deps.update --all + deps.compile + compile",
+      System.cmd("mix", ~w"do deps.get + deps.compile + compile",
         cd: target_path(),
         into: IO.stream(),
-        env: %{"MIX_ENV" => nil}
+        env: subapp_env()
       )
 
     :ok
@@ -49,7 +60,7 @@ defmodule Modkit.Support.Subapp do
       System.cmd("mix", ~w"compile",
         cd: target_path(),
         into: IO.stream(),
-        env: %{"MIX_ENV" => nil}
+        env: subapp_env()
       )
 
     :ok
@@ -70,13 +81,14 @@ defmodule Modkit.Support.Subapp do
     System.cmd("mix", ["mod.relocate" | argv],
       cd: target_path(),
       stderr_to_stdout: true,
-      env: %{"MIX_ENV" => nil}
+      env: subapp_env()
     )
   end
 
   def relocate!(argv \\ []) do
     case relocate(argv) do
       {output, 0} ->
+        IO.puts([IO.ANSI.cyan(), output, IO.ANSI.reset()])
         output
 
       {output, _} ->

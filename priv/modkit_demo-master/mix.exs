@@ -5,7 +5,7 @@ defmodule ModkitDemo.MixProject do
     [
       app: :modkit_demo,
       version: "0.1.0",
-      elixir: "~> 1.18",
+      elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -19,7 +19,7 @@ defmodule ModkitDemo.MixProject do
 
   defp deps do
     [
-      {:modkit, path: Path.expand("../..")}
+      {:modkit, path: System.fetch_env!("MODKIT_DEP_ROOT")}
     ]
   end
 end

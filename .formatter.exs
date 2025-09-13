@@ -1,4 +1,4 @@
 [
-  inputs: ["*.exs", "priv/templates/**/*.ex", "{config,lib,test,tmp}/**/*.{ex,exs}"],
+  inputs: ["*.exs", "priv/templates/**/*.ex", "{config,lib,test}/**/*.{ex,exs}"],
   force_do_end_blocks: true
 ]
