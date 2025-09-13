@@ -12,13 +12,12 @@ defmodule Modkit.CLI.UsageFormat.OptionFormatter.PlainText do
   @moduledoc false
 
   @behaviour Modkit.CLI.UsageFormat
+  @doc_indent 16
+  @arg_indent 2
+  @max_doc_width 87
 
-  # padding on the left of the options block
-  @left_padding "  "
-  @left_padding_len String.length(@left_padding)
-
-  defp left_padding do
-    @left_padding
+  defp indent(n) do
+    List.duplicate(" ", n)
   end
 
   @impl true
@@ -60,15 +59,16 @@ defmodule Modkit.CLI.UsageFormat.OptionFormatter.PlainText do
   def format_arguments(command, fmt_opts) do
     columns = Keyword.get_lazy(fmt_opts, :io_columns, &io_columns/0)
     ansi_enabled? = Keyword.get(fmt_opts, :ansi_enabled, false)
-    doc_width = columns - @left_padding_len
-    doc_padding = [?\n, left_padding()]
+
+    doc_width = min(columns - @doc_indent, @max_doc_width)
+    doc_padding = [?\n, indent(@doc_indent)]
 
     Enum.map_intersperse(command.arguments, "\n\n", fn arg ->
       title = arg_title(arg, ansi_enabled?)
 
       case format_doc(arg, doc_width, doc_padding) do
-        :no_doc -> [left_padding(), title]
-        doc -> [left_padding(), title, doc]
+        :no_doc -> [indent(@arg_indent), title]
+        doc -> [indent(@arg_indent), title, doc]
       end
     end)
   end
@@ -91,26 +91,19 @@ defmodule Modkit.CLI.UsageFormat.OptionFormatter.PlainText do
 
     signatures = Enum.map(options, &signature(&1, ansi_enabled?, has_short_opts?))
 
-    {doc_padding, doc_padding_len} =
-      if has_short_opts? do
-        # ..................... "-x, --"
-        {[?\n, left_padding(), "      "], @left_padding_len + 6}
-      else
-        # ..................... "--"
-        {[?\n, left_padding(), "  "], @left_padding_len + 2}
-      end
+    doc_padding = [?\n, indent(@doc_indent)]
 
-    doc_width = columns - doc_padding_len
+    doc_width = min(columns - @doc_indent, @max_doc_width)
 
     docs = Enum.map(options, &format_doc(&1, doc_width, doc_padding))
 
     opts_docs =
       Enum.zip_with(signatures, docs, fn
         signature, :no_doc ->
-          [left_padding(), signature, ?\n]
+          [indent(@arg_indent), signature, ?\n]
 
         signature, doc ->
-          [left_padding(), signature, doc, ?\n]
+          [indent(@arg_indent), signature, doc, ?\n]
       end)
 
     Enum.intersperse(opts_docs, ?\n)
@@ -127,7 +120,7 @@ defmodule Modkit.CLI.UsageFormat.OptionFormatter.PlainText do
 
     if shorts? do
       case short do
-        nil -> ["    "]
+        nil -> []
         s when ansi_enabled? -> [bright(["-", Atom.to_string(s)]), ", "]
         s -> ["-", Atom.to_string(s), ", "]
       end
