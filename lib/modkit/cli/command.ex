@@ -60,25 +60,45 @@ defmodule Modkit.CLI.Command do
   end
 
   defp build_args(list) do
-    {args, _} =
-      Enum.map_reduce(list, nil, fn arg, last_unrequired ->
-        arg = build_argument(arg)
+    # non-required arguments must be last
+    # a variadic argument must be the last one
+    prev = %{not_required: nil, variadic: nil}
 
-        case arg do
-          %{required: true} when last_unrequired == nil ->
-            {arg, nil}
-
-          %{key: key, required: true} ->
-            raise ArgumentError,
-                  "non-required arguments must be defined after required ones " <>
-                    "but #{inspect(key)} was given after #{inspect(last_unrequired)}"
-
-          %{key: key, required: false} ->
-            {arg, key}
-        end
-      end)
-
+    {args, _} = Enum.map_reduce(list, prev, &reduce_args/2)
     args
+  end
+
+  defp reduce_args(arg, prev) do
+    arg = build_argument(arg)
+
+    case arg do
+      %{key: key, required: true} when prev.not_required != nil ->
+        raise ArgumentError,
+              "non-required arguments must be defined after required ones " <>
+                "but #{inspect(key)} was defined after #{inspect(prev.not_required)}"
+
+      %{key: key} when prev.variadic != nil ->
+        raise ArgumentError,
+              "repeated argument must be the last argument " <>
+                "but #{inspect(key)} was defined after #{inspect(prev.variadic)}"
+
+      %{key: key} = arg ->
+        prev =
+          if arg.required do
+            prev
+          else
+            %{prev | not_required: key}
+          end
+
+        prev =
+          if arg.repeat do
+            %{prev | variadic: key}
+          else
+            prev
+          end
+
+        {arg, prev}
+    end
   end
 
   defp build_argument({key, conf}) do

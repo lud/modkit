@@ -7,7 +7,7 @@
 #
 defmodule Modkit.CLI.Argument do
   @moduledoc false
-  @enforce_keys [:key, :required, :cast, :doc, :type]
+  @enforce_keys [:key, :required, :cast, :doc, :type, :repeat]
   defstruct @enforce_keys
 
   @type vtype :: :integer | :float | :string
@@ -25,11 +25,12 @@ defmodule Modkit.CLI.Argument do
 
     doc = Keyword.get(conf, :doc) || ""
     type = Keyword.get(conf, :type, :string)
+    repeat = Keyword.get(conf, :repeat, false)
 
     validate_type(type)
     validate_cast(cast)
 
-    %__MODULE__{key: key, required: required, cast: cast, doc: doc, type: type}
+    %__MODULE__{key: key, required: required, cast: cast, doc: doc, type: type, repeat: repeat}
   end
 
   defp validate_cast(cast) do

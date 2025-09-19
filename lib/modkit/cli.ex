@@ -6,6 +6,7 @@
 #   mix cli.embed Modkit.CLI lib/modkit/cli -fy --no-moduledoc
 #
 defmodule Modkit.CLI do
+  alias Modkit.CLI.Argument
   alias Modkit.CLI.Command
   alias Modkit.CLI.UsageFormat
 
@@ -390,25 +391,27 @@ defmodule Modkit.CLI do
     take_args(schemes, args, %{})
   end
 
+  defp take_args([%{repeat: true} = scheme | _], argv, acc) do
+    %Argument{key: key, required: req?} = scheme
+
+    argv
+    |> Enum.reduce_while({:ok, []}, fn value, {:ok, list} ->
+      case cast_arg(scheme, value) do
+        {:ok, casted} -> {:cont, {:ok, [casted | list]}}
+        {:error, _} = err -> {:halt, err}
+      end
+    end)
+    |> case do
+      {:ok, []} when req? -> {:error, {:missing_argument, key}}
+      {:ok, list} -> {:ok, Map.put(acc, key, :lists.reverse(list))}
+      {:error, _} = err -> err
+    end
+  end
+
   defp take_args([scheme | schemes], [value | argv], acc) do
-    %{key: key, cast: cast, type: t} = scheme
-
-    case cast_arg_type(t, value) do
-      :error ->
-        {:error, {:argument_type, key, t}}
-
-      {:ok, value} ->
-        case apply_cast(cast, value) do
-          {:ok, casted} ->
-            acc = Map.put(acc, key, casted)
-            take_args(schemes, argv, acc)
-
-          {:error, reason} ->
-            {:error, {:argument_cast, key, reason}}
-
-          other ->
-            raise "Argument custom caster #{inspect(cast)} returned invalid value: #{inspect(other)}"
-        end
+    with {:ok, casted} <- cast_arg(scheme, value) do
+      acc = Map.put(acc, scheme.key, casted)
+      take_args(schemes, argv, acc)
     end
   end
 
@@ -426,6 +429,27 @@ defmodule Modkit.CLI do
 
   defp take_args([%{required: true, key: key} | _], [], _acc) do
     {:error, {:missing_argument, key}}
+  end
+
+  defp cast_arg(scheme, value) do
+    %{key: key, cast: cast, type: t} = scheme
+
+    case cast_arg_type(t, value) do
+      :error ->
+        {:error, {:argument_type, key, t}}
+
+      {:ok, value} ->
+        case apply_cast(cast, value) do
+          {:ok, casted} ->
+            {:ok, casted}
+
+          {:error, reason} ->
+            {:error, {:argument_cast, key, reason}}
+
+          other ->
+            raise "Argument custom caster #{inspect(cast)} returned invalid value: #{inspect(other)}"
+        end
+    end
   end
 
   defp cast_arg_type(:string, value) do

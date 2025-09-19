@@ -139,12 +139,21 @@ defmodule Modkit.CLI.UsageFormat do
     end
   end
 
-  defp format_usage_args_list([%{required: req?, key: key} | rest]) do
+  defp format_usage_args_list([arg | rest]) do
+    %{required: req?, key: key, repeat: repeat?} = arg
+
+    rep =
+      if repeat? do
+        "..."
+      else
+        []
+      end
+
     name = Atom.to_string(key)
 
     case req? do
-      true -> [" <", name, ">" | format_usage_args_list(rest)]
-      false -> [[" [<", name, ">" | format_usage_args_list(rest)], "]"]
+      true -> [" ", name, rep | format_usage_args_list(rest)]
+      false -> [[" [", name, rep | format_usage_args_list(rest)], "]"]
     end
   end
 

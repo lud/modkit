@@ -41,8 +41,16 @@ defmodule Modkit.CLI.UsageFormat.OptionFormatter.Markdown do
   defp format_argument(argument) do
     %Argument{
       key: key,
-      doc: doc
+      doc: doc,
+      repeat: repeat?
     } = argument
+
+    rep =
+      if repeat? do
+        "..."
+      else
+        []
+      end
 
     doc =
       case doc do
@@ -61,7 +69,7 @@ defmodule Modkit.CLI.UsageFormat.OptionFormatter.Markdown do
 
     [
       "* ",
-      ["`", Atom.to_string(key), "`"],
+      ["`", Atom.to_string(key), rep, "`"],
       String.trim_trailing(IO.chardata_to_string(doc)),
       "\n"
     ]
@@ -111,15 +119,15 @@ defmodule Modkit.CLI.UsageFormat.OptionFormatter.Markdown do
   defp short_long(option) do
     %Option{short: s} = option
 
-    long = ["--", name(option), doc(option)]
+    long = ["`--", name(option), doc(option), "`"]
 
     short =
       case s do
         nil -> []
-        _ -> ["-", Atom.to_string(s), ", "]
+        _ -> ["`-", Atom.to_string(s), "`, "]
       end
 
-    ["`", short, long, "`"]
+    [short, long]
   end
 
   defp name(%Option{key: k}) do
