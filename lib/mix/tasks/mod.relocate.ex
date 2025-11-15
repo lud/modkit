@@ -109,13 +109,20 @@ defmodule Mix.Tasks.Mod.Relocate do
   end
 
   defp build_move({file, modules}, mount) do
-    case Mod.local_root(modules) do
-      nil ->
-        warn_many(file, modules)
-        :skip
-
-      root ->
+    case Mod.local_roots(modules) do
+      [root] ->
         build_move({file, [root]}, mount)
+
+      [_, _ | _] = roots ->
+        # print multiple roots warning if not all ignored
+        warn_roots = Enum.reject(roots, &(:ignore == Mount.preferred_path(mount, &1)))
+
+        case warn_roots do
+          [] -> :ok
+          _ -> warn_multiple_roots(file, warn_roots)
+        end
+
+        :skip
     end
   end
 
@@ -187,8 +194,26 @@ defmodule Mix.Tasks.Mod.Relocate do
     {Path.join(from_rest), Path.join(to_rest), common_path}
   end
 
-  defp warn_many(file, _list_of_mods) do
-    CLI.warn("Several modules defined in #{file} without a common local root module")
+  defp warn_multiple_roots(file, list_of_roots) do
+    len = length(list_of_roots)
+
+    dbg_list =
+      if len <= 10 do
+        Enum.map_intersperse(list_of_roots, ?\n, &["* ", inspect(&1)])
+      else
+        rest = len - 10
+
+        [
+          Enum.map_intersperse(Enum.take(list_of_roots, 10), ?\n, &["* ", inspect(&1)]),
+          "* ..#{rest} other#{(rest > 1 && "s") || ""}\n"
+        ]
+      end
+
+    CLI.warn("""
+    Several modules defined in #{file} without a common local root module.
+    Common namespaces:
+    #{dbg_list}\
+    """)
   end
 
   defp ask_move(_module, _cur_path, _pref_path) do

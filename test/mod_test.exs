@@ -33,10 +33,16 @@ defmodule Modkit.ModTest do
     # is no local root. In that way, the local root is different from a "common
     # prefix". Here we want a module that exists, not just a prefix.
     assert AAA = Mod.local_root(AAA, AAA.BBB)
+    assert AAA = Mod.local_root(AAA.BBB, AAA)
   end
 
   test "local root works with a single module" do
     assert AAA = Mod.local_root([AAA])
+  end
+
+  test "debug local root" do
+    mods = [AAA, AAA.BBB, XXX.YYY, XXX]
+    assert [AAA, XXX] = Mod.local_roots(mods)
   end
 
   defmodule EmbeddedImpl do
