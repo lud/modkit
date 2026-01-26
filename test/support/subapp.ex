@@ -53,7 +53,7 @@ defmodule Modkit.Support.Subapp do
   end
 
   def soft_reset do
-    _ = File.rm_rf!(target_path("lib"))
+    _ = File.rm_rf!(target_path("lib")) |> dbg()
     _ = File.cp_r!(source_path("lib"), target_path("lib"))
 
     {_, 0} =
