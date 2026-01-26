@@ -71,33 +71,39 @@ defmodule Mix.Tasks.Mod.New do
     %{options: options, arguments: arguments} = command
     options = expand_options(options) |> dbg()
     module = arguments.module
-    template = find_template(options)
 
-    template |> dbg()
+    # can_write? =
+    #   cond do
+    #     not File.exists?(path) -> true
+    #     options.overwrite -> true
+    #     Mix.shell().yes?("File #{path} exists, overwrite?", default: :no) -> true
+    #     :_ -> false
+    #   end
 
-    path = resolve_path(module, mount, options)
+    # if can_write? do
+    #   File.mkdir_p!(Path.dirname(path))
+    #   File.write!(path, rendered)
+    #   CLI.halt_success("Wrote module #{inspect(module)} to #{path}")
+    # else
+    #   CLI.writeln("cancelled")
+    # end
 
-    rendered = Template.render(module, template: template)
-
-    can_write? =
-      cond do
-        not File.exists?(path) -> true
-        options.overwrite -> true
-        Mix.shell().yes?("File #{path} exists, overwrite?", default: :no) -> true
-        :_ -> false
-      end
-
-    if can_write? do
-      File.mkdir_p!(Path.dirname(path))
-      File.write!(path, rendered)
-      CLI.halt_success("Wrote module #{inspect(module)} to #{path}")
-    else
-      CLI.writeln("cancelled")
-    end
+    #     CLI.halt_success("Wrote module #{inspect(module)} to #{path}")
+    # CLI.writeln("cancelled")
   end
 
   defp expand_options(options) do
     Map.put(options, :generate_mod, not options.test_only)
+  end
+
+  def generate(%{mount: mount}, module, options) do
+    template = find_template(options)
+    path = resolve_path(module, mount, options)
+    rendered = Template.render(module, template: template)
+
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, rendered)
+    {:ok, [path]}
   end
 
   defp find_template(%{template: template}) do

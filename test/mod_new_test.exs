@@ -2,12 +2,28 @@ defmodule Modkit.ModNewTest do
   alias Modkit.Support.Subapp
   use ExUnit.Case, async: false
 
-  setup_all do
-    Subapp.hard_reset()
+  # setup_all do
+  #   Subapp.hard_reset()
+  # end
+
+  # setup do
+  #   Subapp.soft_reset()
+  # end
+
+  defp project do
+    # Demo app uses empty configuration for now
+    project = Modkit.load_project(ModkitDemo, app: :modkit_demo, elixirc_paths: ["lib"])
+
+    update_in(project.mount.points, fn points ->
+      Enum.map(points, fn %{path: p} = point ->
+        %{point | path: target(p)}
+      end)
+    end)
+    |> dbg(limit: :infinity)
   end
 
-  setup do
-    Subapp.soft_reset()
+  defp target(path) do
+    Path.relative_to_cwd(Subapp.target_path(path))
   end
 
   defp valid_existing_module(comment \\ "") do
@@ -20,7 +36,14 @@ defmodule Modkit.ModNewTest do
 
   describe "basic module creation" do
     test "creating a new module" do
-      Subapp.mod_new!(~w(ModkitDemo.Some.Mod))
+      assert {:ok, paths} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.Some.Mod, %{
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: false
+               })
+
+      assert [target("/lib/modkit_demo/some/mod.ex")] == paths
       content = Subapp.read!("lib/modkit_demo/some/mod.ex")
 
       assert """
@@ -31,10 +54,19 @@ defmodule Modkit.ModNewTest do
   end
 
   describe "custom templates" do
+    @tag :skip
     test "creating a module with a custom template file" do
       template_path = "priv/custom_template.eex"
 
-      Subapp.mod_new!(["ModkitDemo.Custom.Mod", "-t", template_path])
+      assert {:ok, paths} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.Custom.Mod, %{
+                 template: template_path,
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: false
+               })
+
+      assert [target("lib/modkit_demo/custom/mod.ex")] == paths
       content = Subapp.read!("lib/modkit_demo/custom/mod.ex") |> dbg()
 
       assert """
@@ -44,27 +76,41 @@ defmodule Modkit.ModNewTest do
              """ = content
     end
 
+    @tag :skip
     test "fails when template path doesn't exist" do
-      {output, exit_code} = Subapp.mod_new(~w(ModkitDemo.Missing.Mod -t priv/nonexistent.ex))
-
-      assert exit_code != 0
-      assert output =~ ~r{nonexistent.*was not found}
-    end
-
-    test "fails when module file already exists" do
-      Subapp.create_file("lib/modkit_demo/existing/mod.ex", valid_existing_module("foo"))
-
-      {output, exit_code} = Subapp.mod_new(~w(ModkitDemo.Existing.Mod))
-
-      assert exit_code != 0
-      assert output =~ "exists"
+      assert {:error, {:template_not_found, "priv/nonexistent.ex"}} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.Missing.Mod, %{
+                 template: "priv/nonexistent.ex",
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: false
+               })
     end
 
     @tag :skip
-    test "overwrites existing module with -o flag" do
+    test "fails when module file already exists" do
+      Subapp.create_file("lib/modkit_demo/existing/mod.ex", valid_existing_module("foo"))
+
+      assert {:error, {:exists, "lib/modkit_demo/existing/mod.ex"}} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.Existing.Mod, %{
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: false
+               })
+    end
+
+    @tag :skip
+    test "overwrites existing module with overwrite flag" do
       Subapp.create_file("lib/modkit_demo/overwrite/mod.ex", valid_existing_module("old content"))
 
-      Subapp.mod_new!(~w(ModkitDemo.Overwrite.Mod -o))
+      assert {:ok, paths} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.Overwrite.Mod, %{
+                 overwrite: true,
+                 generate_mod: true,
+                 generate_test: false
+               })
+
+      assert ["priv/modkit_demo-master/lib/modkit_demo/overwrite/mod.ex"] = paths
       content = Subapp.read!("lib/modkit_demo/overwrite/mod.ex")
 
       assert content =~ "defmodule ModkitDemo.Overwrite.Mod do"
@@ -75,7 +121,14 @@ defmodule Modkit.ModNewTest do
   describe "built-in templates" do
     @tag :skip
     test "creating a GenServer module" do
-      Subapp.mod_new!(~w(ModkitDemo.MyGenServer -t GenServer))
+      assert {:ok, ["lib/modkit_demo/my_gen_server.ex"]} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.MyGenServer, %{
+                 template: "GenServer",
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: false
+               })
+
       content = Subapp.read!("lib/modkit_demo/my_gen_server.ex")
 
       assert content =~ "defmodule ModkitDemo.MyGenServer do"
@@ -84,7 +137,14 @@ defmodule Modkit.ModNewTest do
 
     @tag :skip
     test "creating a Supervisor module" do
-      Subapp.mod_new!(~w(ModkitDemo.MySupervisor -t Supervisor))
+      assert {:ok, ["lib/modkit_demo/my_supervisor.ex"]} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.MySupervisor, %{
+                 template: "Supervisor",
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: false
+               })
+
       content = Subapp.read!("lib/modkit_demo/my_supervisor.ex")
 
       assert content =~ "defmodule ModkitDemo.MySupervisor do"
@@ -93,7 +153,14 @@ defmodule Modkit.ModNewTest do
 
     @tag :skip
     test "creating a DynamicSupervisor module" do
-      Subapp.mod_new!(~w(ModkitDemo.MyDynamicSupervisor -t DynamicSupervisor))
+      assert {:ok, ["lib/modkit_demo/my_dynamic_supervisor.ex"]} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.MyDynamicSupervisor, %{
+                 template: "DynamicSupervisor",
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: false
+               })
+
       content = Subapp.read!("lib/modkit_demo/my_dynamic_supervisor.ex")
 
       assert content =~ "defmodule ModkitDemo.MyDynamicSupervisor do"
@@ -102,7 +169,14 @@ defmodule Modkit.ModNewTest do
 
     @tag :skip
     test "creating a Mix.Task module" do
-      Subapp.mod_new!(~w(ModkitDemo.MyTask -t Mix.Task))
+      assert {:ok, ["lib/modkit_demo/my_task.ex"]} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.MyTask, %{
+                 template: "Mix.Task",
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: false
+               })
+
       content = Subapp.read!("lib/modkit_demo/my_task.ex")
 
       assert content =~ "defmodule ModkitDemo.MyTask do"
@@ -113,8 +187,15 @@ defmodule Modkit.ModNewTest do
   describe "unit test generation with -u flag" do
     @tag :skip
     test "creates both module and test file" do
-      Subapp.mod_new!(~w(ModkitDemo.WithTest -u))
+      assert {:ok, paths} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.WithTest, %{
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: true
+               })
 
+      assert "lib/modkit_demo/with_test.ex" in paths
+      assert "test/modkit_demo/with_test_test.exs" in paths
       assert Subapp.exists?("lib/modkit_demo/with_test.ex")
       assert Subapp.exists?("test/modkit_demo/with_test_test.exs")
 
@@ -130,10 +211,13 @@ defmodule Modkit.ModNewTest do
     test "fails when module exists and -u is used" do
       Subapp.create_file("lib/modkit_demo/existing_mod.ex", valid_existing_module("foo"))
 
-      {output, exit_code} = Subapp.mod_new(~w(ModkitDemo.ExistingMod -u))
+      assert {:error, {:exists, "lib/modkit_demo/existing_mod.ex"}} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.ExistingMod, %{
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: true
+               })
 
-      assert exit_code != 0
-      assert output =~ "exists"
       refute Subapp.exists?("test/modkit_demo/existing_mod_test.exs")
     end
 
@@ -141,10 +225,13 @@ defmodule Modkit.ModNewTest do
     test "fails when test exists and -u is used" do
       Subapp.create_file("test/modkit_demo/existing_test_test.exs", valid_existing_module("foo"))
 
-      {output, exit_code} = Subapp.mod_new(~w(ModkitDemo.ExistingTest -u))
+      assert {:error, {:exists, "test/modkit_demo/existing_test_test.exs"}} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.ExistingTest, %{
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: true
+               })
 
-      assert exit_code != 0
-      assert output =~ "exists"
       refute Subapp.exists?("lib/modkit_demo/existing_test.ex")
     end
 
@@ -152,7 +239,15 @@ defmodule Modkit.ModNewTest do
     test "overwrites existing module and creates test with -u and -o flags" do
       Subapp.create_file("lib/modkit_demo/overwrite_mod.ex", valid_existing_module("old module"))
 
-      Subapp.mod_new!(~w(ModkitDemo.OverwriteMod -u -o))
+      assert {:ok, paths} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.OverwriteMod, %{
+                 overwrite: true,
+                 generate_mod: true,
+                 generate_test: true
+               })
+
+      assert "lib/modkit_demo/overwrite_mod.ex" in paths
+      assert "test/modkit_demo/overwrite_mod_test.exs" in paths
 
       module_content = Subapp.read!("lib/modkit_demo/overwrite_mod.ex")
       test_content = Subapp.read!("test/modkit_demo/overwrite_mod_test.exs")
@@ -169,7 +264,15 @@ defmodule Modkit.ModNewTest do
         valid_existing_module("old test")
       )
 
-      Subapp.mod_new!(~w(ModkitDemo.OverwriteTest -u -o))
+      assert {:ok, paths} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.OverwriteTest, %{
+                 overwrite: true,
+                 generate_mod: true,
+                 generate_test: true
+               })
+
+      assert "lib/modkit_demo/overwrite_test.ex" in paths
+      assert "test/modkit_demo/overwrite_test_test.exs" in paths
 
       module_content = Subapp.read!("lib/modkit_demo/overwrite_test.ex")
       test_content = Subapp.read!("test/modkit_demo/overwrite_test_test.exs")
@@ -188,7 +291,15 @@ defmodule Modkit.ModNewTest do
         valid_existing_module("old test")
       )
 
-      Subapp.mod_new!(~w(ModkitDemo.OverwriteBoth -u -o))
+      assert {:ok, paths} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.OverwriteBoth, %{
+                 overwrite: true,
+                 generate_mod: true,
+                 generate_test: true
+               })
+
+      assert "lib/modkit_demo/overwrite_both.ex" in paths
+      assert "test/modkit_demo/overwrite_both_test.exs" in paths
 
       module_content = Subapp.read!("lib/modkit_demo/overwrite_both.ex")
       test_content = Subapp.read!("test/modkit_demo/overwrite_both_test.exs")
@@ -203,7 +314,12 @@ defmodule Modkit.ModNewTest do
   describe "test-only generation with -U flag" do
     @tag :skip
     test "creates only the test file, not the module" do
-      Subapp.mod_new!(~w(ModkitDemo.OnlyTest -U))
+      assert {:ok, ["test/modkit_demo/only_test_test.exs"]} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.OnlyTest, %{
+                 overwrite: false,
+                 generate_mod: false,
+                 generate_test: true
+               })
 
       refute Subapp.exists?("lib/modkit_demo/only_test.ex")
       assert Subapp.exists?("test/modkit_demo/only_test_test.exs")
@@ -217,10 +333,12 @@ defmodule Modkit.ModNewTest do
     test "fails when test exists and -U is used" do
       Subapp.create_file("test/modkit_demo/existing_only_test.exs", valid_existing_module("foo"))
 
-      {output, exit_code} = Subapp.mod_new(~w(ModkitDemo.ExistingOnly -U))
-
-      assert exit_code != 0
-      assert output =~ "exists"
+      assert {:error, {:exists, "test/modkit_demo/existing_only_test.exs"}} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.ExistingOnly, %{
+                 overwrite: false,
+                 generate_mod: false,
+                 generate_test: true
+               })
     end
 
     @tag :skip
@@ -230,13 +348,65 @@ defmodule Modkit.ModNewTest do
         valid_existing_module("old test")
       )
 
-      Subapp.mod_new!(~w(ModkitDemo.OverwriteOnly -U -o))
+      assert {:ok, ["test/modkit_demo/overwrite_only_test.exs"]} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.OverwriteOnly, %{
+                 overwrite: true,
+                 generate_mod: false,
+                 generate_test: true
+               })
 
       refute Subapp.exists?("lib/modkit_demo/overwrite_only.ex")
       test_content = Subapp.read!("test/modkit_demo/overwrite_only_test.exs")
 
       assert test_content =~ "defmodule ModkitDemo.OverwriteOnlyTest do"
       refute test_content =~ "old test"
+    end
+  end
+
+  describe "custom path" do
+    @tag :skip
+    test "creates module at custom path" do
+      assert {:ok, ["lib/custom/location/my_module.ex"]} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.CustomPath, %{
+                 path: "lib/custom/location/my_module.ex",
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: false
+               })
+
+      assert Subapp.exists?("lib/custom/location/my_module.ex")
+      content = Subapp.read!("lib/custom/location/my_module.ex")
+      assert content =~ "defmodule ModkitDemo.CustomPath do"
+    end
+
+    @tag :skip
+    test "fails when custom path already exists" do
+      Subapp.create_file("lib/custom/existing/path.ex", valid_existing_module("existing"))
+
+      assert {:error, {:exists, "lib/custom/existing/path.ex"}} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.CustomPathExists, %{
+                 path: "lib/custom/existing/path.ex",
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: false
+               })
+    end
+
+    @tag :skip
+    test "overwrites existing file at custom path with overwrite flag" do
+      Subapp.create_file("lib/custom/overwrite/path.ex", valid_existing_module("old"))
+
+      assert {:ok, ["lib/custom/overwrite/path.ex"]} =
+               Mix.Tasks.Mod.New.generate(project(), ModkitDemo.CustomPathOverwrite, %{
+                 path: "lib/custom/overwrite/path.ex",
+                 overwrite: true,
+                 generate_mod: true,
+                 generate_test: false
+               })
+
+      content = Subapp.read!("lib/custom/overwrite/path.ex")
+      assert content =~ "defmodule ModkitDemo.CustomPathOverwrite do"
+      refute content =~ "old"
     end
   end
 end

@@ -18,7 +18,7 @@ defmodule Modkit.Support.Subapp do
     Path.join([source_dir() | List.wrap(subpath)])
   end
 
-  defp target_path(subpath \\ []) do
+  def target_path(subpath \\ []) do
     Path.join([target_dir() | List.wrap(subpath)])
   end
 
