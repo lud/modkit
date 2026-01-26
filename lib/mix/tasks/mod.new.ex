@@ -107,7 +107,8 @@ defmodule Mix.Tasks.Mod.New do
 
   def generate(%{mount: mount}, module, options) do
     with {:ok, template} <- find_template(options),
-         {:ok, path} <- resolve_path(module, mount, options) do
+         {:ok, path} <- resolve_path(module, mount, options),
+         :ok <- check_overwrite(path, options) do
       rendered = Template.render(module, template: template)
 
       File.mkdir_p!(Path.dirname(path))
@@ -143,6 +144,19 @@ defmodule Mix.Tasks.Mod.New do
       {:ok, Map.fetch!(options, :path)}
     else
       Mount.preferred_path(mount, module)
+    end
+  end
+
+  defp check_overwrite(_, %{overwrite: true}) do
+    :ok
+  end
+
+  defp check_overwrite(path, %{overwrite: false}) do
+    if File.exists?(path) do
+      File.read!(path) |> dbg()
+      {:error, {:exists, path}} |> dbg()
+    else
+      :ok
     end
   end
 
