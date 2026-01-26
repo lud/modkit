@@ -1,10 +1,10 @@
 defmodule Modkit.Mod.Template do
   def render(module, opts \\ []) when is_list(opts) do
     module = inspect(module)
-    impl = Keyword.get(opts, :template, __MODULE__.BaseModule)
+    template = Keyword.get(opts, :template, __MODULE__.BaseModule.template())
     format_opts = Keyword.get(opts, :formatter, [])
 
-    impl.template()
+    template
     |> EEx.eval_string(assigns: %{module: module})
     |> Code.format_string!(format_opts)
     |> :erlang.iolist_to_binary()

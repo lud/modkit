@@ -6,7 +6,7 @@ defmodule Modkit.RelocateTest do
     Subapp.hard_reset()
   end
 
-  setup_all do
+  setup do
     Subapp.soft_reset()
   end
 

@@ -77,6 +77,10 @@ defmodule Modkit.Support.Subapp do
     path
   end
 
+  def read!(subpath) do
+    File.read!(target_path(subpath))
+  end
+
   def relocate(argv \\ []) do
     System.cmd("mix", ["mod.relocate" | argv],
       cd: target_path(),
@@ -94,6 +98,26 @@ defmodule Modkit.Support.Subapp do
       {output, _} ->
         IO.puts([IO.ANSI.yellow(), output, IO.ANSI.reset()])
         raise "relocation command failed"
+    end
+  end
+
+  def mod_new(argv) do
+    System.cmd("mix", ["mod.new" | argv],
+      cd: target_path(),
+      stderr_to_stdout: true,
+      env: subapp_env()
+    )
+  end
+
+  def mod_new!(argv) do
+    case mod_new(argv) do
+      {output, 0} ->
+        IO.puts([IO.ANSI.cyan(), output, IO.ANSI.reset()])
+        output
+
+      {output, _} ->
+        IO.puts([IO.ANSI.yellow(), output, IO.ANSI.reset()])
+        raise "mod new command failed"
     end
   end
 end
