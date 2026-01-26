@@ -3,9 +3,11 @@ defmodule Modkit do
   alias Modkit.SnakeCase
 
   def load_current_project do
-    config = Mix.Project.config()
+    load_project(main_module_from_current_project(), Mix.Project.config())
+  end
+
+  def load_project(default_root, config) do
     otp_app = Keyword.fetch!(config, :app)
-    default_root = main_module_from_current_project()
 
     names = get_in(config, [:modkit, :names])
 

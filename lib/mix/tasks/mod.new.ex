@@ -67,7 +67,7 @@ defmodule Mix.Tasks.Mod.New do
 
     command = CLI.parse_or_halt!(argv, @command)
 
-    %{mount: mount} = Modkit.load_current_project()
+    %{mount: mount} = Modkit.load_current_project() |> dbg()
     %{options: options, arguments: arguments} = command
     options = expand_options(options) |> dbg()
     module = arguments.module

@@ -19,6 +19,4 @@ defmodule Modkit.ModNewTest do
            end\
            """ = content
   end
-
-  # test "creating a new module with built-in templates"
 end
