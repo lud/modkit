@@ -6,9 +6,9 @@ defmodule Modkit.ModNewTest do
   #   Subapp.hard_reset()
   # end
 
-  # setup do
-  #   Subapp.soft_reset()
-  # end
+  setup_all do
+    Subapp.soft_reset()
+  end
 
   defp project do
     # Demo app uses empty configuration for now
@@ -54,9 +54,8 @@ defmodule Modkit.ModNewTest do
   end
 
   describe "custom templates" do
-    @tag :skip
     test "creating a module with a custom template file" do
-      template_path = "priv/custom_template.eex"
+      template_path = target("priv/custom_template.eex")
 
       assert {:ok, paths} =
                Mix.Tasks.Mod.New.generate(project(), ModkitDemo.Custom.Mod, %{

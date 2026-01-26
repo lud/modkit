@@ -72,6 +72,15 @@ defmodule Mix.Tasks.Mod.New do
     options = expand_options(options) |> dbg()
     module = arguments.module
 
+    # case  do
+    #         {:ok, path} ->
+
+    #         {:error, :not_mounted} ->
+    #           CLI.halt_error(
+    #             "Could not figure out path for module #{inspect(module)}. Please provide the --path option."
+    #           )
+    #       end
+
     # can_write? =
     #   cond do
     #     not File.exists?(path) -> true
@@ -97,13 +106,16 @@ defmodule Mix.Tasks.Mod.New do
   end
 
   def generate(%{mount: mount}, module, options) do
-    template = find_template(options)
-    path = resolve_path(module, mount, options)
-    rendered = Template.render(module, template: template)
+    with {:ok, template} <- find_template(options),
+         {:ok, path} <- resolve_path(module, mount, options) do
+      rendered = Template.render(module, template: template)
 
-    File.mkdir_p!(Path.dirname(path))
-    File.write!(path, rendered)
-    {:ok, [path]}
+      File.mkdir_p!(Path.dirname(path))
+      File.write!(path, rendered)
+      {:ok, [path]}
+    else
+      {:error, _} = err -> err
+    end
   end
 
   defp find_template(%{template: template}) do
@@ -111,34 +123,26 @@ defmodule Mix.Tasks.Mod.New do
       path ->
         case File.read(path) |> dbg() do
           {:ok, content} ->
-            content
+            {:ok, content}
 
           {:error, :enoent} ->
-            CLI.halt_error("Template #{template} was not found")
+            {:error, {:x, template}}
 
-          {:error, reason} ->
-            CLI.halt_error("Could not read template #{template}: #{inspect(reason)}")
+          {:error, _} = err ->
+            err
         end
     end
   end
 
   defp find_template(_) do
-    Template.BaseModule.template()
+    {:ok, Template.BaseModule.template()}
   end
 
   defp resolve_path(module, mount, options) do
     if Map.has_key?(options, :path) do
-      Map.fetch!(options, :path)
+      {:ok, Map.fetch!(options, :path)}
     else
-      case Mount.preferred_path(mount, module) do
-        {:ok, path} ->
-          path
-
-        {:error, :not_mounted} ->
-          CLI.halt_error(
-            "Could not figure out path for module #{inspect(module)}. Please provide the --path option."
-          )
-      end
+      Mount.preferred_path(mount, module)
     end
   end
 
