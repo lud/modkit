@@ -2,6 +2,11 @@ defmodule Modkit.Mod.Template do
   def render(module, opts \\ []) when is_list(opts) do
     module = inspect(module)
     template = Keyword.get(opts, :template, __MODULE__.BaseModule.template())
+
+    if not is_binary(template) do
+      raise "invalid template (not a string): #{inspect(template)}"
+    end
+
     format_opts = Keyword.get(opts, :formatter, [])
 
     template
