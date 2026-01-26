@@ -73,6 +73,8 @@ defmodule Mix.Tasks.Mod.New do
     module = arguments.module
     template = find_template(options)
 
+    template |> dbg()
+
     path = resolve_path(module, mount, options)
 
     rendered = Template.render(module, template: template)
@@ -98,10 +100,24 @@ defmodule Mix.Tasks.Mod.New do
     Map.put(options, :generate_mod, not options.test_only)
   end
 
-  defp find_template(_options) do
-    cond do
-      true -> Template.BaseModule.template()
+  defp find_template(%{template: template}) do
+    case template |> dbg() do
+      path ->
+        case File.read(path) |> dbg() do
+          {:ok, content} ->
+            content
+
+          {:error, :enoent} ->
+            CLI.halt_error("Template #{template} was not found")
+
+          {:error, reason} ->
+            CLI.halt_error("Could not read template #{template}: #{inspect(reason)}")
+        end
     end
+  end
+
+  defp find_template(_) do
+    Template.BaseModule.template()
   end
 
   defp resolve_path(module, mount, options) do
