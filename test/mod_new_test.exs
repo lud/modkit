@@ -75,7 +75,6 @@ defmodule Modkit.ModNewTest do
              """ = content
     end
 
-    @tag :skip
     test "fails when template path doesn't exist" do
       assert {:error, {:template_not_found, "priv/nonexistent.ex"}} =
                Mix.Tasks.Mod.New.generate(project(), ModkitDemo.Missing.Mod, %{

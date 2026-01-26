@@ -126,7 +126,7 @@ defmodule Mix.Tasks.Mod.New do
             {:ok, content}
 
           {:error, :enoent} ->
-            {:error, {:x, template}}
+            {:error, {:template_not_found, template}}
 
           {:error, _} = err ->
             err
