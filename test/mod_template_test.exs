@@ -11,21 +11,17 @@ defmodule Modkit.ModTemplateTest do
     assert Template.render(TestArea) =~ "defmodule TestArea do"
   end
 
-  defmodule FormattingTest do
-    def template do
-      """
-      defmodule <%= @module %> do
-        def foo, do: :ok
-      end
-      """
-    end
-  end
-
   test "the template will format according to given rules" do
-    assert Template.render(TestArea, template: FormattingTest) =~ "def foo, do: :ok"
+    template = """
+    defmodule <%= @module %> do
+      def foo, do: :ok
+    end
+    """
+
+    assert Template.render(TestArea, template: template) =~ "def foo, do: :ok"
 
     assert Template.render(TestArea,
-             template: FormattingTest,
+             template: template,
              formatter: [force_do_end_blocks: true]
            ) =~
              """
@@ -37,18 +33,18 @@ defmodule Modkit.ModTemplateTest do
 
   test "the template can use a different flavor" do
     refute Template.render(TestArea) =~ "use GenServer"
-    assert Template.render(TestArea, template: GenServerTemplate) =~ "use GenServer"
+    assert Template.render(TestArea, template: GenServerTemplate.template()) =~ "use GenServer"
 
-    assert Template.render(TestArea, template: SupervisorTemplate) =~
+    assert Template.render(TestArea, template: SupervisorTemplate.template()) =~
              "use Supervisor"
 
-    assert Template.render(TestArea, template: DynamicSupervisorTemplate) =~
+    assert Template.render(TestArea, template: DynamicSupervisorTemplate.template()) =~
              "use DynamicSupervisor"
 
-    assert Template.render(TestArea, template: MixTaskTemplate) =~
+    assert Template.render(TestArea, template: MixTaskTemplate.template()) =~
              "use Mix.Task"
 
-    assert Template.render(TestArea, template: UnitTestTemplate) =~
+    assert Template.render(TestArea, template: UnitTestTemplate.template()) =~
              "use ExUnit.Case, async: false"
   end
 end

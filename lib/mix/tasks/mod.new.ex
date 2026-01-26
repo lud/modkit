@@ -9,22 +9,21 @@ defmodule Mix.Tasks.Mod.New do
   @command [
     module: __MODULE__,
     options: [
-      gen_server: [
+      template: [
+        type: :string,
+        short: :t,
+        doc: "Use the given template. A path to an .eex file or a built-in template."
+      ],
+      test: [
         type: :boolean,
-        short: :g,
-        doc: "use GenServer and define base functions",
+        short: :u,
+        doc: "Create a unit test module for the generated module.",
         default: false
       ],
-      supervisor: [
+      test_only: [
         type: :boolean,
-        short: :s,
-        doc: "use Supervisor and define base functions",
-        default: false
-      ],
-      dynamic_supervisor: [
-        type: :boolean,
-        short: :d,
-        doc: "use DynamicSupervisor and define base functions",
+        short: :U,
+        doc: "Create the unit test only, without generating the module.",
         default: false
       ],
       # mix_task: [type: :boolean, short: :t, doc: "create a new mix task", default: false],
@@ -70,7 +69,7 @@ defmodule Mix.Tasks.Mod.New do
 
     %{mount: mount} = Modkit.load_current_project()
     %{options: options, arguments: arguments} = command
-    options = check_exclusive_opts(options)
+    options = expand_options(options) |> dbg()
     module = arguments.module
     template = find_template(options)
 
@@ -95,45 +94,13 @@ defmodule Mix.Tasks.Mod.New do
     end
   end
 
-  defp check_exclusive_opts(options) do
-    exclusive = %{
-      gen_server: "--gen-server",
-      supervisor: "--supervisor",
-      mix_task: "--mix-task",
-      unit_test: "--unit-test",
-      dynamic_supervisor: "--dynamic-supervisor"
-    }
-
-    provided =
-      options
-      |> Map.take(Map.keys(exclusive))
-      |> Map.filter(fn {_, enabled} -> enabled == true end)
-      |> Map.keys()
-
-    case provided do
-      [] ->
-        options
-
-      [_single] ->
-        options
-
-      [top | rest] ->
-        rest
-        |> Enum.map(&Map.fetch!(exclusive, &1))
-        |> Enum.intersperse(", ")
-        |> Kernel.++([" and ", Map.fetch!(exclusive, top), " options are mutually exclusive"])
-        |> CLI.halt_error()
-    end
+  defp expand_options(options) do
+    Map.put(options, :generate_mod, not options.test_only)
   end
 
-  defp find_template(options) do
+  defp find_template(_options) do
     cond do
-      options.gen_server -> Template.GenServerTemplate
-      options.supervisor -> Template.SupervisorTemplate
-      options.dynamic_supervisor -> Template.DynamicSupervisorTemplate
-      # options.mix_task -> Template.MixTaskTemplate
-      # options.unit_test -> Template.UnitTestTemplate
-      true -> Template.BaseModule
+      true -> Template.BaseModule.template()
     end
   end
 
