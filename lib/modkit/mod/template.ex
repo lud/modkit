@@ -110,8 +110,11 @@ defmodule Modkit.Mod.Template do
   defmodule UnitTestTemplate do
     def template do
       """
-      defmodule <%= @module %> do
+      defmodule <%= @test_module %> do
         use ExUnit.Case, async: false
+
+        alias <%= @module %>
+
       end
       """
     end

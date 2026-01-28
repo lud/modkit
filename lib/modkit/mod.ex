@@ -164,4 +164,8 @@ defmodule Modkit.Mod do
       end
     end
   end
+
+  def as_test(module) when is_atom(module) do
+    Module.concat([inspect(module) <> "Test"])
+  end
 end
