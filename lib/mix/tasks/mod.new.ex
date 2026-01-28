@@ -1,6 +1,10 @@
 defmodule Mix.Tasks.Mod.New do
   alias Modkit.CLI
   alias Modkit.Mod.Template
+  alias Modkit.Mod.Template.DynamicSupervisorTemplate
+  alias Modkit.Mod.Template.GenServerTemplate
+  alias Modkit.Mod.Template.MixTaskTemplate
+  alias Modkit.Mod.Template.SupervisorTemplate
   alias Modkit.Mount
   use Mix.Task
 
@@ -121,6 +125,18 @@ defmodule Mix.Tasks.Mod.New do
 
   defp find_template(%{template: template}) do
     case template |> dbg() do
+      "GenServer" ->
+        {:ok, GenServerTemplate.template()}
+
+      "Supervisor" ->
+        {:ok, SupervisorTemplate.template()}
+
+      "DynamicSupervisor" ->
+        {:ok, DynamicSupervisorTemplate.template()}
+
+      "Mix.Task" ->
+        {:ok, MixTaskTemplate.template()}
+
       path ->
         case File.read(path) |> dbg() do
           {:ok, content} ->

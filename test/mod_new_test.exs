@@ -115,7 +115,6 @@ defmodule Modkit.ModNewTest do
   end
 
   describe "built-in templates" do
-    @tag :skip
     test "creating a GenServer module" do
       assert {:ok, [target("lib/modkit_demo/my_gen_server.ex")]} ==
                Mix.Tasks.Mod.New.generate(project(), ModkitDemo.MyGenServer, %{
@@ -131,7 +130,6 @@ defmodule Modkit.ModNewTest do
       assert content =~ "use GenServer"
     end
 
-    @tag :skip
     test "creating a Supervisor module" do
       assert {:ok, [target("lib/modkit_demo/my_supervisor.ex")]} ==
                Mix.Tasks.Mod.New.generate(project(), ModkitDemo.MySupervisor, %{
@@ -147,7 +145,6 @@ defmodule Modkit.ModNewTest do
       assert content =~ "use Supervisor"
     end
 
-    @tag :skip
     test "creating a DynamicSupervisor module" do
       assert {:ok, [target("lib/modkit_demo/my_dynamic_supervisor.ex")]} ==
                Mix.Tasks.Mod.New.generate(project(), ModkitDemo.MyDynamicSupervisor, %{
@@ -163,7 +160,6 @@ defmodule Modkit.ModNewTest do
       assert content =~ "use DynamicSupervisor"
     end
 
-    @tag :skip
     test "creating a Mix.Task module" do
       assert {:ok, [target("lib/modkit_demo/my_task.ex")]} ==
                Mix.Tasks.Mod.New.generate(project(), ModkitDemo.MyTask, %{
