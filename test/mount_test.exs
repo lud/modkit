@@ -143,4 +143,22 @@ defmodule Modkit.MountTest do
 
     check.("lib/my_app/consumers/rabbitmq_consumer.ex", MyApp.Consumers.RabbitMQConsumer)
   end
+
+  test "transforming to test mount" do
+    # less precision first
+    mount =
+      Mount.define([
+        {AAA, "lib/aaa"},
+        {AAA.BBB, "lib/aaa/bbb"}
+      ])
+
+    test_mount = Mount.as_test(mount)
+
+    assert {:ok, %{prefix: AAA}} = Mount.resolve(test_mount, AAA)
+    assert {:ok, %{prefix: AAA.BBB}} = Mount.resolve(test_mount, AAA.BBB)
+    assert "test/aaa" = Mount.preferred_path(test_mount, AAA)
+    assert "test/aaa/bbb" = Mount.preferred_path(test_mount, AAA.BBB)
+    assert "test/aaa" = Mount.preferred_path(test_mount, AAATest)
+    assert "test/aaa/bbb" = Mount.preferred_path(test_mount, AAA.BBBTest)
+  end
 end

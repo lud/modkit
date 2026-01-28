@@ -1,4 +1,6 @@
 defmodule Mix.Tasks.Mod.New do
+  alias Modkit.Mod.Template.UnitTestTemplate
+  alias Modkit.Mod
   alias Modkit.CLI
   alias Modkit.Mod.Template
   alias Modkit.Mod.Template.DynamicSupervisorTemplate
@@ -106,25 +108,63 @@ defmodule Mix.Tasks.Mod.New do
   end
 
   defp expand_options(options) do
-    Map.put(options, :generate_mod, not options.test_only)
+    Map.merge(options, %{
+      generate_mod: not options.test_only,
+      generate_test: options.test or options.test_only
+    })
   end
 
   def generate(%{mount: mount}, module, options) do
     with {:ok, template} <- find_template(options),
          {:ok, path} <- resolve_path(module, mount, options),
-         :ok <- check_overwrite(path, options) do
-      rendered = Template.render(module, template: template)
-
-      File.mkdir_p!(Path.dirname(path))
-      File.write!(path, rendered)
-      {:ok, [path]}
+         {:ok, generations} <- build_generations(module, mount, template, path, options),
+         :ok <- check_overwrite(generations, options) do
+      write_generations(generations)
     else
       {:error, _} = err -> err
     end
   end
 
+  defp write_generations(generations) do
+    Enum.reduce_while(generations, {:ok, []}, fn gen, {:ok, written_paths} ->
+      {_module, template, path, vars} = gen
+      rendered = Template.render(template, vars)
+
+      with :ok <- File.mkdir_p(Path.dirname(path)),
+           :ok <- File.write(path, rendered) do
+        {:cont, {:ok, [path | written_paths]}}
+      else
+        {:error, _} = err -> {:halt, err}
+      end
+    end)
+  end
+
+  defp build_generations(module, mount, template, path, options) do
+    generations =
+      if options.generate_mod do
+        [{module, template, path, %{module: module}}]
+      else
+        []
+      end
+
+    if options.generate_test do
+      test_module = Mod.as_test(module)
+      test_mount = Mount.as_test(mount)
+
+      with {:ok, test_path} <- resolve_path(test_module, test_mount, %{}) do
+        {:ok,
+         [
+           {test_module, UnitTestTemplate.template(), test_path,
+            %{module: module, test_module: test_module}}
+         ]}
+      end
+    else
+      generations
+    end
+  end
+
   defp find_template(%{template: template}) do
-    case template |> dbg() do
+    case template do
       "GenServer" ->
         {:ok, GenServerTemplate.template()}
 
@@ -138,7 +178,7 @@ defmodule Mix.Tasks.Mod.New do
         {:ok, MixTaskTemplate.template()}
 
       path ->
-        case File.read(path) |> dbg() do
+        case File.read(path) do
           {:ok, content} ->
             {:ok, content}
 
@@ -156,10 +196,9 @@ defmodule Mix.Tasks.Mod.New do
   end
 
   defp resolve_path(module, mount, options) do
-    if Map.has_key?(options, :path) do
-      {:ok, Map.fetch!(options, :path)}
-    else
-      Mount.preferred_path(mount, module)
+    case options do
+      %{path: path} -> {:ok, path}
+      _ -> Mount.preferred_path(mount, module)
     end
   end
 
