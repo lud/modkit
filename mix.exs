@@ -53,6 +53,7 @@ defmodule Modkit.MixProject do
   defp package do
     [
       licenses: ["MIT"],
+      files: ~w(lib mix.exs README* LICENSE* CHANGELOG*),
       links: %{
         "Github" => "https://github.com/lud/modkit"
       }
