@@ -1,18 +1,28 @@
 defmodule Modkit.Mod.Template do
-  def render(module, opts \\ []) when is_list(opts) do
-    module = inspect(module)
-    impl = Keyword.get(opts, :template, __MODULE__.BaseModule)
-    format_opts = Keyword.get(opts, :formatter, [])
+  @moduledoc false
+  def render(template, vars \\ %{})
 
-    impl.template()
-    |> EEx.eval_string(assigns: %{module: module})
-    |> Code.format_string!(format_opts)
+  def render(template, vars) when is_binary(template) and is_map(vars) do
+    vars = vars_to_string(vars)
+
+    template
+    |> EEx.eval_string(assigns: vars)
     |> :erlang.iolist_to_binary()
   end
 
-  @moduledoc false
+  def render(template, vars) when is_atom(template) and is_map(vars) do
+    render(template.template(), vars)
+  end
 
-  defmodule BaseModule do
+  defp vars_to_string(vars) do
+    Map.new(vars, fn
+      {:module, mod} -> {:module, inspect(mod)}
+      {:test_module, mod} -> {:test_module, inspect(mod)}
+      {k, v} -> {k, v}
+    end)
+  end
+
+  defmodule BaseModuleTemplate do
     def template do
       """
       defmodule <%= @module %> do
@@ -105,8 +115,11 @@ defmodule Modkit.Mod.Template do
   defmodule UnitTestTemplate do
     def template do
       """
-      defmodule <%= @module %> do
+      defmodule <%= @test_module %> do
         use ExUnit.Case, async: false
+
+        alias <%= @module %>
+
       end
       """
     end

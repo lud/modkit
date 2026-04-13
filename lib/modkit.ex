@@ -3,9 +3,11 @@ defmodule Modkit do
   alias Modkit.SnakeCase
 
   def load_current_project do
-    config = Mix.Project.config()
+    load_project(main_module_from_current_project(), Mix.Project.config())
+  end
+
+  def load_project(default_root, config, opts \\ []) do
     otp_app = Keyword.fetch!(config, :app)
-    default_root = main_module_from_current_project()
 
     names = get_in(config, [:modkit, :names])
 
@@ -16,7 +18,15 @@ defmodule Modkit do
       end
 
     mount = Mount.define!(mount_points, names: names)
-    %{otp_app: otp_app, mount: mount}
+
+    # Option used for demo-app in tests
+    app_dir =
+      case opts[:app_dir] do
+        nil -> File.cwd!()
+        dir -> Path.absname(dir)
+      end
+
+    %{otp_app: otp_app, mount: mount, app_dir: app_dir}
   end
 
   defp main_module_from_current_project do

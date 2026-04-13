@@ -18,18 +18,17 @@ defmodule Modkit.Support.Subapp do
     Path.join([source_dir() | List.wrap(subpath)])
   end
 
-  defp target_path(subpath \\ []) do
+  def target_path(subpath \\ []) do
     Path.join([target_dir() | List.wrap(subpath)])
   end
 
   def hard_reset do
     :ok = check_not_installed()
+    IO.puts("\nhard resetting subapp")
 
     _ = File.rm_rf!(target_path())
     _ = File.mkdir_p!(Path.dirname(target_path()))
     _ = File.cp_r!(source_path(), target_path())
-
-    IO.puts("hard resetting subapp")
 
     {_, 0} =
       System.cmd("mix", ~w"do deps.get + deps.compile + compile",
@@ -53,8 +52,13 @@ defmodule Modkit.Support.Subapp do
   end
 
   def soft_reset do
+    :ok = check_not_installed()
+    IO.puts("\nsoft resetting subapp")
+
     _ = File.rm_rf!(target_path("lib"))
     _ = File.cp_r!(source_path("lib"), target_path("lib"))
+    _ = File.rm_rf!(target_path("test"))
+    _ = File.cp_r!(source_path("test"), target_path("test"))
 
     {_, 0} =
       System.cmd("mix", ~w"compile",
@@ -77,6 +81,14 @@ defmodule Modkit.Support.Subapp do
     path
   end
 
+  def read!(subpath) do
+    File.read!(target_path(subpath))
+  end
+
+  def exists?(subpath) do
+    File.exists?(target_path(subpath))
+  end
+
   def relocate(argv \\ []) do
     System.cmd("mix", ["mod.relocate" | argv],
       cd: target_path(),
@@ -94,6 +106,26 @@ defmodule Modkit.Support.Subapp do
       {output, _} ->
         IO.puts([IO.ANSI.yellow(), output, IO.ANSI.reset()])
         raise "relocation command failed"
+    end
+  end
+
+  def mod_new(argv) do
+    System.cmd("mix", ["mod.new" | argv],
+      cd: target_path(),
+      stderr_to_stdout: true,
+      env: subapp_env()
+    )
+  end
+
+  def mod_new!(argv) do
+    case mod_new(argv) do
+      {output, 0} ->
+        IO.puts([IO.ANSI.cyan(), output, IO.ANSI.reset()])
+        output
+
+      {output, _} ->
+        IO.puts([IO.ANSI.yellow(), output, IO.ANSI.reset()])
+        raise "mod new command failed"
     end
   end
 end

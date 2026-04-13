@@ -143,4 +143,56 @@ defmodule Modkit.MountTest do
 
     check.("lib/my_app/consumers/rabbitmq_consumer.ex", MyApp.Consumers.RabbitMQConsumer)
   end
+
+  test "transforming to test mount" do
+    mount =
+      Mount.define!([
+        {AAA, "lib/aaa"},
+        {AAA.BBB, "lib/aaa/bbb"}
+      ])
+
+    test_mount = Mount.as_test(mount)
+
+    assert {:ok, %{prefix: AAA}} = Mount.resolve(test_mount, AAA)
+    assert {:ok, %{prefix: AAA.BBB}} = Mount.resolve(test_mount, AAA.BBB)
+    assert {:ok, "test/aaa.exs"} = Mount.preferred_path(test_mount, AAA)
+    assert {:ok, "test/aaa/bbb.exs"} = Mount.preferred_path(test_mount, AAA.BBB)
+    assert {:ok, "test/aaa_test.exs"} = Mount.preferred_path(test_mount, AAATest)
+    assert {:ok, "test/aaa/bbb_test.exs"} = Mount.preferred_path(test_mount, AAA.BBBTest)
+  end
+
+  describe "path_as_test/1" do
+    test "replaces a leading lib/ with test/" do
+      assert "test/my_app/foo_test" == Mount.path_as_test("lib/my_app/foo")
+    end
+
+    test "prepends test/ for non-lib, non-test paths" do
+      assert "test/dev/my_app/foo_test" == Mount.path_as_test("dev/my_app/foo")
+    end
+
+    test "is a no-op on the root segment when already under test/" do
+      assert "test/support/my_app/foo_test" ==
+               Mount.path_as_test("test/support/my_app/foo")
+    end
+  end
+
+  describe "as_test/1 handles non-lib mount paths" do
+    test "dev/ mount becomes test/dev/" do
+      mount = Mount.define!([{AAA, "dev/aaa"}])
+      test_mount = Mount.as_test(mount)
+
+      assert {:ok, "test/dev/aaa.exs"} = Mount.preferred_path(test_mount, AAA)
+      assert {:ok, "test/dev/aaa/foo.exs"} = Mount.preferred_path(test_mount, AAA.Foo)
+      assert {:ok, "test/dev/aaa_test.exs"} = Mount.preferred_path(test_mount, AAATest)
+    end
+
+    test "test/support mount does not produce test/test/" do
+      mount = Mount.define!([{AAA, "test/support/aaa"}])
+      test_mount = Mount.as_test(mount)
+
+      assert {:ok, "test/support/aaa.exs"} = Mount.preferred_path(test_mount, AAA)
+      assert {:ok, "test/support/aaa/foo.exs"} = Mount.preferred_path(test_mount, AAA.Foo)
+      assert {:ok, "test/support/aaa_test.exs"} = Mount.preferred_path(test_mount, AAATest)
+    end
+  end
 end

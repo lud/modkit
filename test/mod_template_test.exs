@@ -1,5 +1,6 @@
 defmodule Modkit.ModTemplateTest do
   alias Modkit.Mod.Template
+  alias Modkit.Mod.Template.BaseModuleTemplate
   alias Modkit.Mod.Template.DynamicSupervisorTemplate
   alias Modkit.Mod.Template.GenServerTemplate
   alias Modkit.Mod.Template.MixTaskTemplate
@@ -8,47 +9,40 @@ defmodule Modkit.ModTemplateTest do
   use ExUnit.Case, async: true
 
   test "a module can be generated" do
-    assert Template.render(TestArea) =~ "defmodule TestArea do"
-  end
-
-  defmodule FormattingTest do
-    def template do
-      """
-      defmodule <%= @module %> do
-        def foo, do: :ok
-      end
-      """
-    end
+    assert Template.render(BaseModuleTemplate, %{module: TestArea}) =~ "defmodule TestArea do"
   end
 
   test "the template will format according to given rules" do
-    assert Template.render(TestArea, template: FormattingTest) =~ "def foo, do: :ok"
+    template = """
+    defmodule <%= @module %> do
+      def foo, do: :ok
+    end
+    """
 
-    assert Template.render(TestArea,
-             template: FormattingTest,
-             formatter: [force_do_end_blocks: true]
-           ) =~
-             """
-               def foo do
-                 :ok
-               end
-             """
+    rendered = Template.render(template, %{module: SomeMod})
+    assert rendered =~ "defmodule SomeMod do"
+    assert rendered =~ "def foo, do: :ok"
   end
 
   test "the template can use a different flavor" do
-    refute Template.render(TestArea) =~ "use GenServer"
-    assert Template.render(TestArea, template: GenServerTemplate) =~ "use GenServer"
+    refute Template.render(BaseModuleTemplate, %{module: Foo}) =~ "use GenServer"
+    assert Template.render(GenServerTemplate.template(), %{module: Foo}) =~ "use GenServer"
 
-    assert Template.render(TestArea, template: SupervisorTemplate) =~
+    assert Template.render(SupervisorTemplate.template(), %{module: Foo}) =~
              "use Supervisor"
 
-    assert Template.render(TestArea, template: DynamicSupervisorTemplate) =~
+    assert Template.render(DynamicSupervisorTemplate.template(), %{module: Foo}) =~
              "use DynamicSupervisor"
 
-    assert Template.render(TestArea, template: MixTaskTemplate) =~
+    assert Template.render(MixTaskTemplate.template(), %{module: Foo}) =~
              "use Mix.Task"
+  end
 
-    assert Template.render(TestArea, template: UnitTestTemplate) =~
-             "use ExUnit.Case, async: false"
+  test "the test template uses both module and test_module variables" do
+    rendered = Template.render(UnitTestTemplate.template(), %{module: Foo, test_module: SomeTest})
+
+    assert rendered =~ "defmodule SomeTest do"
+    assert rendered =~ "alias Foo"
+    assert rendered =~ "use ExUnit.Case, async: false"
   end
 end

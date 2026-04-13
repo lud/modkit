@@ -92,6 +92,73 @@ defmodule Modkit.Mount do
           "invalid point in :mount config option, got: #{inspect(point)}, error: #{inspect(reason)}"
   end
 
+  def as_test(%__MODULE__{} = mount) do
+    points =
+      Enum.flat_map(mount.points, fn point ->
+        # Return 2 points for each point.
+        # - AAA -> AAA on test/aaa
+        # - AAA -> AAATest on test/aaa_test
+        #
+        # - lib/aaa         -> test/aaa
+        # - dev/aaa         -> test/dev/aaa
+        # - test/support/aa -> test/support/aa
+
+        case point.path do
+          :ignore ->
+            [point]
+
+          path ->
+            base_path = swap_test_root(path)
+            test_path = append_test_suffix(base_path)
+            test_pre_split = List.update_at(point.pre_split, -1, &(&1 <> "Test"))
+
+            [
+              %{point | path: base_path, flavor: :test},
+              %{point | path: test_path, pre_split: test_pre_split, flavor: :test}
+            ]
+        end
+      end)
+
+    %{mount | points: points}
+  end
+
+  @doc """
+  Transforms a module file path (without extension) into the corresponding test
+  file path (also without extension).
+
+  The transformation replaces a leading `lib/` or `test/` segment with `test/`,
+  or prepends `test/` otherwise, then appends `_test` to the last segment.
+
+      iex> Modkit.Mount.path_as_test("lib/my_app/foo")
+      "test/my_app/foo_test"
+
+      iex> Modkit.Mount.path_as_test("dev/my_app/foo")
+      "test/dev/my_app/foo_test"
+
+      iex> Modkit.Mount.path_as_test("test/support/my_app/foo")
+      "test/support/my_app/foo_test"
+  """
+  def path_as_test(path) when is_binary(path) do
+    path
+    |> swap_test_root()
+    |> append_test_suffix()
+  end
+
+  defp swap_test_root(path) do
+    case Path.split(path) do
+      ["lib" | rest] -> Path.join(["test" | rest])
+      ["test" | rest] -> Path.join(["test" | rest])
+      rest -> Path.join(["test" | rest])
+    end
+  end
+
+  defp append_test_suffix(path) do
+    path
+    |> Path.split()
+    |> List.update_at(-1, &(&1 <> "_test"))
+    |> Path.join()
+  end
+
   defp sort_points(%{pre_split: a}, %{pre_split: b}) do
     # higher precision goes first
     a > b
@@ -147,7 +214,15 @@ defmodule Modkit.Mount do
     path_rest = unprefix(mod_split, point.pre_split)
     sub_path = path_segments(path_rest, point.flavor, to_snake)
 
-    Path.join(:lists.flatten([point.path, sub_path])) <> ".ex"
+    Path.join(:lists.flatten([point.path, sub_path])) <> file_suffix(point.flavor)
+  end
+
+  defp file_suffix(:test) do
+    ".exs"
+  end
+
+  defp file_suffix(_) do
+    ".ex"
   end
 
   defp split_mod(module) do
@@ -176,7 +251,7 @@ defmodule Modkit.Mount do
     []
   end
 
-  defp format_segment(segment, :elixir, to_snake) do
+  defp format_segment(segment, flavor, to_snake) when flavor in [:elixir, :test] do
     to_snake.(segment)
   end
 
