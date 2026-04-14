@@ -55,6 +55,7 @@ defmodule Modkit.Support.Subapp do
     :ok = check_not_installed()
     IO.puts("\nsoft resetting subapp")
 
+    _ = File.rm_rf!(target_path("_build/dev/lib/modkit_demo"))
     _ = File.rm_rf!(target_path("lib"))
     _ = File.cp_r!(source_path("lib"), target_path("lib"))
     _ = File.rm_rf!(target_path("test"))
@@ -66,6 +67,14 @@ defmodule Modkit.Support.Subapp do
         into: IO.stream(),
         env: subapp_env()
       )
+
+    # Backdate .app so compile.app's mtime check always sees it as stale when
+    # a test adds new modules within the same filesystem-mtime second.
+    app_file = target_path("_build/dev/lib/modkit_demo/ebin/modkit_demo.app")
+
+    if File.exists?(app_file) do
+      File.touch!(app_file, 0)
+    end
 
     :ok
   end

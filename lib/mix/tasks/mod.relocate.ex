@@ -21,6 +21,12 @@ defmodule Mix.Tasks.Mod.Relocate do
         short: :f,
         default: false,
         doc: "This flag will make the command actually relocate the files."
+      ],
+      verbose: [
+        type: :boolean,
+        short: :v,
+        default: false,
+        doc: "Print all discovered modules and their current paths before relocating."
       ]
     ],
     arguments: [
@@ -69,6 +75,7 @@ defmodule Mix.Tasks.Mod.Relocate do
 
     modules
     |> Mod.group_by_file()
+    |> verbose_debug(options)
     |> Stream.filter(&filter_dep/1)
     |> Stream.map(&build_move(&1, mount))
     |> Enum.filter(&(&1 != :skip))
@@ -78,6 +85,18 @@ defmodule Mix.Tasks.Mod.Relocate do
     end
   rescue
     e -> CLI.halt_error(1, Exception.message(e))
+  end
+
+  defp verbose_debug(groups, options) do
+    if options.verbose do
+      CLI.writeln("Discovered modules (#{map_size(groups)} files):")
+
+      Stream.each(groups, fn {file, mods} ->
+        CLI.writeln(["  ", file, ": ", Enum.map_join(mods, ", ", &inspect/1)])
+      end)
+    else
+      groups
+    end
   end
 
   defp filter_dep({file, _}) do

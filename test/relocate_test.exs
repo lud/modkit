@@ -10,7 +10,6 @@ defmodule Modkit.RelocateTest do
     Subapp.soft_reset()
   end
 
-  # TODO this test is flaky
   test "listing modules to relocate" do
     Subapp.create_module("lib/foo/bar/baz.ex", ModkitDemo.AAA.BBB)
     Subapp.create_module("lib/some/sub/path.ex", ModkitDemo.CCC.DDD)
