@@ -1,6 +1,6 @@
 defmodule Modkit.ModkitTest do
   alias Modkit.Mount
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   test "get the current project" do
     assert %{otp_app: :modkit, mount: mount} = Modkit.load_current_project()
