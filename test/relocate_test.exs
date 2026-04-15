@@ -11,26 +11,26 @@ defmodule Modkit.RelocateTest do
   end
 
   test "listing modules to relocate" do
-    Subapp.create_module("lib/foo/bar/baz.ex", ModkitDemo.AAA.BBB)
-    Subapp.create_module("lib/some/sub/path.ex", ModkitDemo.CCC.DDD)
+    Subapp.create_module("lib/t1/foo/bar.ex", ModkitDemo.AAA.BBB)
+    Subapp.create_module("lib/t1/baz/qux.ex", ModkitDemo.CCC.DDD)
     output = Subapp.relocate!()
 
-    assert output =~ "move lib/foo/bar/baz.ex"
+    assert output =~ "move lib/t1/foo/bar.ex"
     assert output =~ "to   lib/modkit_demo/aaa/bbb.ex"
-    assert output =~ "move lib/some/sub/path.ex"
+    assert output =~ "move lib/t1/baz/qux.ex"
     assert output =~ "to   lib/modkit_demo/ccc/ddd.ex"
   end
 
   test "relocating a single module" do
-    Subapp.create_module("lib/foo/bar/baz.ex", ModkitDemo.AAA.BBB)
-    Subapp.create_module("lib/some/sub/path.ex", ModkitDemo.CCC.DDD)
+    Subapp.create_module("lib/t2/foo/bar.ex", ModkitDemo.AAA.BBB)
+    Subapp.create_module("lib/t2/baz/qux.ex", ModkitDemo.CCC.DDD)
     output = Subapp.relocate!(~w(ModkitDemo.AAA.BBB))
 
-    assert output =~ "move lib/foo/bar/baz.ex"
+    assert output =~ "move lib/t2/foo/bar.ex"
     assert output =~ "to   lib/modkit_demo/aaa/bbb.ex"
 
     # should not concern the other module
-    refute output =~ "move lib/some/sub/path.ex"
+    refute output =~ "move lib/t2/baz/qux.ex"
     refute output =~ "to   lib/modkit_demo/ccc/ddd.ex"
   end
 
