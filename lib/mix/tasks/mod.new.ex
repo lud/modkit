@@ -2,11 +2,6 @@ defmodule Mix.Tasks.Mod.New do
   alias Modkit.CLI
   alias Modkit.Mod
   alias Modkit.Mod.Template
-  alias Modkit.Mod.Template.DynamicSupervisorTemplate
-  alias Modkit.Mod.Template.GenServerTemplate
-  alias Modkit.Mod.Template.MixTaskTemplate
-  alias Modkit.Mod.Template.SupervisorTemplate
-  alias Modkit.Mod.Template.UnitTestTemplate
   alias Modkit.Mount
   use Mix.Task
 
@@ -18,7 +13,13 @@ defmodule Mix.Tasks.Mod.New do
       template: [
         type: :string,
         short: :t,
-        doc: "Use the given template. A path to an .eex file or a built-in template."
+        doc: """
+        Use the given template for the module code.
+
+        Accepts a path to an .eex file or a built-in template:
+
+        #{Enum.map_intersperse(Template.public_names(), ", ", &[?`, &1, ?`])}.
+        """
       ],
       test: [
         type: :boolean,
@@ -32,8 +33,6 @@ defmodule Mix.Tasks.Mod.New do
         doc: "Create the unit test only, without generating the module.",
         default: false
       ],
-      # mix_task: [type: :boolean, short: :t, doc: "create a new mix task", default: false],
-      # unit_test: [type: :boolean, short: :u, doc: "create a new unit test", default: false],
       path: [
         type: :string,
         short: :p,
@@ -93,7 +92,14 @@ defmodule Mix.Tasks.Mod.New do
         ])
 
       {:error, {:template_not_found, template}} ->
-        CLI.halt_error("Template not found: #{template}")
+        CLI.halt_error([
+          "No template found matching ",
+          inspect(template),
+          ".\n",
+          "Neither a built-in template nor a file could be found.\n\n",
+          "Built-in templates:\n",
+          Enum.map(Template.public_names(), fn name -> ["  - ", name, "\n"] end)
+        ])
 
       {:error, :not_mounted} ->
         CLI.halt_error(
@@ -197,7 +203,7 @@ defmodule Mix.Tasks.Mod.New do
       test_module = Mod.as_test(module)
 
       {:ok,
-       {test_module, UnitTestTemplate.template(), test_path,
+       {test_module, Template.unit_test_template(), test_path,
         %{module: module, test_module: test_module}}}
     end
   end
@@ -211,7 +217,7 @@ defmodule Mix.Tasks.Mod.New do
         test_path = Path.join(project.app_dir, test_path)
 
         {:ok,
-         {test_module, UnitTestTemplate.template(), test_path,
+         {test_module, Template.unit_test_template(), test_path,
           %{module: module, test_module: test_module}}}
 
       :ignore ->
@@ -256,21 +262,12 @@ defmodule Mix.Tasks.Mod.New do
   end
 
   defp find_template(%{template: template}) do
-    case template do
-      "GenServer" ->
-        {:ok, GenServerTemplate.template()}
+    case Template.fetch(template) do
+      {:ok, content} ->
+        {:ok, content}
 
-      "Supervisor" ->
-        {:ok, SupervisorTemplate.template()}
-
-      "DynamicSupervisor" ->
-        {:ok, DynamicSupervisorTemplate.template()}
-
-      "Mix.Task" ->
-        {:ok, MixTaskTemplate.template()}
-
-      path ->
-        case File.read(path) do
+      :error ->
+        case File.read(template) do
           {:ok, content} ->
             {:ok, content}
 
@@ -284,7 +281,7 @@ defmodule Mix.Tasks.Mod.New do
   end
 
   defp find_template(_) do
-    {:ok, Template.BaseModuleTemplate.template()}
+    {:ok, Template.base_template()}
   end
 
   defp resolve_path(module, mount, options) do

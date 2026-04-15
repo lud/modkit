@@ -155,7 +155,7 @@ defmodule Modkit.CLI.UsageFormat.OptionFormatter.PlainText do
         spacing = @doc_indent - (raw_len + @arg_indent)
 
         first_padding =
-          if spacing > 1 do
+          if spacing > 0 do
             indent(spacing)
           else
             doc_padding

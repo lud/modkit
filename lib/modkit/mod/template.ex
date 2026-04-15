@@ -1,39 +1,16 @@
 defmodule Modkit.Mod.Template do
   @moduledoc false
-  def render(template, vars \\ %{})
 
-  def render(template, vars) when is_binary(template) and is_map(vars) do
-    vars = vars_to_string(vars)
+  @base_key "Base"
+  @unit_test_key "ExUnit.Case"
 
-    template
-    |> EEx.eval_string(assigns: vars)
-    |> :erlang.iolist_to_binary()
-  end
-
-  def render(template, vars) when is_atom(template) and is_map(vars) do
-    render(template.template(), vars)
-  end
-
-  defp vars_to_string(vars) do
-    Map.new(vars, fn
-      {:module, mod} -> {:module, inspect(mod)}
-      {:test_module, mod} -> {:test_module, inspect(mod)}
-      {k, v} -> {k, v}
-    end)
-  end
-
-  defmodule BaseModuleTemplate do
-    def template do
-      """
+  def templates do
+    %{
+      @base_key => """
       defmodule <%= @module %> do
       end
-      """
-    end
-  end
-
-  defmodule GenServerTemplate do
-    def template do
-      """
+      """,
+      "GenServer" => """
       defmodule <%= @module %> do
         use GenServer
 
@@ -49,13 +26,8 @@ defmodule Modkit.Mod.Template do
           {:ok, opts}
         end
       end
-      """
-    end
-  end
-
-  defmodule SupervisorTemplate do
-    def template do
-      """
+      """,
+      "Supervisor" => """
       defmodule <%= @module %> do
         use Supervisor
 
@@ -72,13 +44,8 @@ defmodule Modkit.Mod.Template do
           Supervisor.init(children, strategy: :one_for_one)
         end
       end
-      """
-    end
-  end
-
-  defmodule DynamicSupervisorTemplate do
-    def template do
-      """
+      """,
+      "DynamicSupervisor" => """
       defmodule <%= @module %> do
         use DynamicSupervisor
 
@@ -91,13 +58,8 @@ defmodule Modkit.Mod.Template do
           DynamicSupervisor.init(strategy: :one_for_one)
         end
       end
-      """
-    end
-  end
-
-  defmodule MixTaskTemplate do
-    def template do
-      """
+      """,
+      "Mix.Task" => """
       defmodule <%= @module %> do
         use Mix.Task
 
@@ -108,13 +70,8 @@ defmodule Modkit.Mod.Template do
           # ...
         end
       end
-      """
-    end
-  end
-
-  defmodule UnitTestTemplate do
-    def template do
-      """
+      """,
+      @unit_test_key => """
       defmodule <%= @test_module %> do
         use ExUnit.Case, async: false
 
@@ -122,6 +79,46 @@ defmodule Modkit.Mod.Template do
 
       end
       """
-    end
+    }
+  end
+
+  def render(template, vars \\ %{}) when is_binary(template) and is_map(vars) do
+    vars = vars_to_string(vars)
+
+    template
+    |> EEx.eval_string(assigns: vars)
+    |> :erlang.iolist_to_binary()
+  end
+
+  def fetch(name) when is_binary(name) do
+    Map.fetch(templates(), name)
+  end
+
+  def fetch!(name) when is_binary(name) do
+    Map.fetch!(templates(), name)
+  end
+
+  def names do
+    templates() |> Map.keys() |> Enum.sort()
+  end
+
+  def public_names do
+    (templates() |> Map.keys() |> Enum.sort()) -- [@unit_test_key]
+  end
+
+  def base_template do
+    fetch!(@base_key)
+  end
+
+  def unit_test_template do
+    fetch!(@unit_test_key)
+  end
+
+  defp vars_to_string(vars) do
+    Map.new(vars, fn
+      {:module, mod} -> {:module, inspect(mod)}
+      {:test_module, mod} -> {:test_module, inspect(mod)}
+      {k, v} -> {k, v}
+    end)
   end
 end
