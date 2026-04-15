@@ -1,6 +1,6 @@
 # Modkit
 
-This library contains a small set of tool to work with Elixir modules files.
+A set of Mix tasks to work with Elixir module files.
 
 
 ## Installation
@@ -10,35 +10,35 @@ This library contains a small set of tool to work with Elixir modules files.
 
 ## `mix mod.new`
 
-
 Creates a new module in the current project.
-
 
 ### Usage
 
-    mix mod.new [options] <module>
-
+    mix mod.new [options] module
 
 ### Options
 
-* `-d`, `--dynamic-supervisor` - use DynamicSupervisor and define base functions
-* `-g`, `--gen-server` - use GenServer and define base functions
-* `-o`, `--overwrite` - Overwrite the file if it exists. Always prompt.
-* `-p`, `--path` - The path of the module to write. Unnecessary if the module prefix is mounted.
-* `-s`, `--supervisor` - use Supervisor and define base functions.
+* `-t`, `--template <string>` - Use the given template for the module code. Accepts a path to an .eex file or a built-in template: `Base`, `DynamicSupervisor`, `GenServer`, `Mix.Task`, `Supervisor`.
+* `-u`, `--test` - Create a unit test module for the generated module. Defaults to false.
+* `-U`, `--test-only` - Create the unit test only, without generating the module. Defaults to false.
+* `-p`, `--path <string>` - The path of the module file to write (must end with .ex). Only applies to the module file; when --test/--test-only is given, the test file path is derived from it. Unnecessary if the module prefix is mounted.
+* `-o`, `--overwrite` - Overwrite existing files. Defaults to false.
 
 
 ## `mix mod.relocate`
 
 Moves modules to correct paths according to their name.
 
-
 ### Usage
 
-    mix mod.relocate [options]
+    mix mod.relocate [options] [module]
 
+### Arguments
+
+* `module` - A single module to relocate. Defaults to all modules.
 
 ### Options
 
-* `-f`, `--force` - This flag will make the command actually relocate the files.
-* `-i`, `--interactive` - This flag will make the command prompt for confirmation whenever a file can be relocated. Takes precedences over `--force`.
+* `-i`, `--interactive` - Prompt for confirmation whenever a file can be relocated. Takes precedence over `--force`. Defaults to false.
+* `-f`, `--force` - Actually relocate the files. Defaults to false.
+* `-v`, `--verbose` - Print all discovered modules and their current paths before relocating. Defaults to false.
