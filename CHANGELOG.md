@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.1] - 2026-04-15
+
+### 🚀 Features
+
+- Display existing templates on mod.new template not found
+
+### 🧪 Testing
+
+- Fix flaky test in subapp
+- Remove duplicate usage of test files
+
+### ⚙️ Miscellaneous Tasks
+
+- Do not ship priv/ on hex
+- Regenerate CLI code
+
 ## [0.9.0] - 2026-04-13
 
 ### 🚀 Features
