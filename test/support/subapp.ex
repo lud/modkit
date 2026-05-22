@@ -1,5 +1,8 @@
 defmodule Modkit.Support.Subapp do
   alias Modkit.SnakeCase
+
+  @subapp_mix_env "dev"
+
   # The orginal copy of the app that is not modified, and under version control.
   defp source_dir do
     Path.absname("priv/modkit_demo-master")
@@ -10,8 +13,15 @@ defmodule Modkit.Support.Subapp do
     Path.absname("_build/test/demo-app")
   end
 
+  defp build_path(subpath \\ []) do
+    Path.join([target_path("_build"), @subapp_mix_env, "lib", "modkit_demo" | List.wrap(subpath)])
+  end
+
   defp subapp_env do
-    %{"MIX_TEST" => nil, "MODKIT_DEP_ROOT" => Path.expand(File.cwd!())}
+    %{
+      "MIX_ENV" => @subapp_mix_env,
+      "MODKIT_DEP_ROOT" => Path.expand(File.cwd!())
+    }
   end
 
   defp source_path(subpath \\ []) do
@@ -55,7 +65,7 @@ defmodule Modkit.Support.Subapp do
     :ok = check_not_installed()
     IO.puts("\nsoft resetting subapp")
 
-    _ = File.rm_rf!(target_path("_build/dev/lib/modkit_demo"))
+    _ = File.rm_rf!(build_path())
     _ = File.rm_rf!(target_path("lib"))
     _ = File.cp_r!(source_path("lib"), target_path("lib"))
     _ = File.rm_rf!(target_path("test"))
@@ -70,7 +80,7 @@ defmodule Modkit.Support.Subapp do
 
     # Backdate .app so compile.app's mtime check always sees it as stale when
     # a test adds new modules within the same filesystem-mtime second.
-    app_file = target_path("_build/dev/lib/modkit_demo/ebin/modkit_demo.app")
+    app_file = build_path(["ebin", "modkit_demo.app"])
 
     if File.exists?(app_file) do
       File.touch!(app_file, 0)
