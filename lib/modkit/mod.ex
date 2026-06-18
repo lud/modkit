@@ -148,20 +148,12 @@ defmodule Modkit.Mod do
     List.starts_with?(child, parent)
   end
 
+  # If we cannot load we bail. Maybe someone is trying to compare atoms and
+  # not actual modules.
   defp protocol_impl?(mod) do
-    # If we cannot load we bail. Maybe someone is trying to compare atoms and
-    # not actual modules.
-
-    if mod == Jason.Encoder.GenMCP.MCP.Root do
-      case Code.ensure_loaded(mod) do
-        {:module, ^mod} -> function_exported?(mod, :__impl__, 1)
-        _ -> false
-      end
-    else
-      case Code.ensure_loaded(mod) do
-        {:module, ^mod} -> function_exported?(mod, :__impl__, 1)
-        _ -> false
-      end
+    case Code.ensure_loaded(mod) do
+      {:module, ^mod} -> function_exported?(mod, :__impl__, 1)
+      _ -> false
     end
   end
 
