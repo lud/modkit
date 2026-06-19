@@ -14,8 +14,6 @@ jobs:
     name: "Report Mix Dependencies"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: erlef/mix-dependency-submission@v1
-        with:
-          # Ignore the demo app's mix.exs so only the main project's dependencies are submitted
-          ignore: priv/modkit_demo-master
+        with: {"ignore":"priv/modkit_demo-master"}
