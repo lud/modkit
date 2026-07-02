@@ -1,11 +1,33 @@
 # Modkit
 
+<!-- rdmx :badges
+    hexpm         : "modkit?color=4e2a8e"
+    github_action : "lud/modkit/elixir.yaml?label=CI&branch=main"
+    license       : modkit
+    -->
+[![hex.pm Version](https://img.shields.io/hexpm/v/modkit?color=4e2a8e)](https://hex.pm/packages/modkit)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/lud/modkit/elixir.yaml?label=CI&branch=main)](https://github.com/lud/modkit/actions/workflows/elixir.yaml?query=branch%3Amain)
+[![License](https://img.shields.io/hexpm/l/modkit.svg)](https://hex.pm/packages/modkit)
+<!-- rdmx /:badges -->
+
 A set of Mix tasks to work with Elixir module files.
 
 
 ## Installation
 
     mix archive.install hex modkit
+
+Or add it as a dependency to your project:
+
+<!-- rdmx :app_dep vsn:$app_vsn -->
+```elixir
+defp deps do
+  [
+    {:modkit, "~> 0.9"},
+  ]
+end
+```
+<!-- rdmx /:app_dep -->
 
 
 ## `mix mod.new`
