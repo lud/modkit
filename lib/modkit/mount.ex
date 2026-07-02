@@ -1,21 +1,50 @@
 defmodule Modkit.Mount do
+  @moduledoc """
+  Maps module name prefixes to directory paths.
+
+  A mount is a list of mount points, each one associating a module prefix with
+  the directory where the modules under that prefix belong. In a Mix project it
+  is defined by the `:mount` entry of the `:modkit` configuration in `mix.exs`:
+
+      def project do
+        [
+          # ...
+          modkit: [
+            mount: [
+              {MyApp, "lib/my_app"},
+              {Mix.Tasks, "lib/mix/tasks", flavor: :mix_task}
+            ]
+          ]
+        ]
+      end
+
+  Once defined, a mount gives the preferred file path of any module it covers:
+
+      iex> mount = Modkit.Mount.define!([{MyApp, "lib/my_app"}])
+      iex> Modkit.Mount.preferred_path(mount, MyApp.Some.Worker)
+      {:ok, "lib/my_app/some/worker.ex"}
+
+  Mount points are tried from the most precise prefix to the least precise one,
+  so a module always resolves to the deepest prefix that covers it.
+  """
+
   alias Modkit.SnakeCase
   @flavors [:elixir, :phoenix, :mix_task]
 
   defmodule Point do
-    @enforce_keys [
-      # This is the atom prefix name given in configuration
-      :prefix,
+    @moduledoc """
+    A single mount point of a `Modkit.Mount`.
 
-      # This is the splitted version of the prefix, containing binaries
-      :pre_split,
+    The struct defines the following fields:
 
-      # This is the mount path for the prefix.
-      :path,
+    * `:prefix` - the module prefix, as given in the configuration.
+    * `:pre_split` - the prefix segments, as returned by `Module.split/1`.
+    * `:path` - the directory for the modules under the prefix, or `:ignore`.
+    * `:flavor` - the path building flavor, as described in
+      `Modkit.Mount.define!/2`.
+    """
 
-      # This is the used flavor
-      :flavor
-    ]
+    @enforce_keys [:prefix, :pre_split, :path, :flavor]
 
     defstruct @enforce_keys
   end
@@ -23,6 +52,32 @@ defmodule Modkit.Mount do
   @enforce_keys [:points, :to_snake]
   defstruct @enforce_keys
 
+  @doc """
+  Builds a mount from a list of mount points. Raises an `ArgumentError` when a
+  point is invalid.
+
+  Each point is a `{prefix, path}` or `{prefix, path, opts}` tuple:
+
+  * `prefix` - a module whose namespace is mounted on the path.
+  * `path` - the directory for the modules under the prefix, or `:ignore` to
+    exclude those modules from path resolution.
+  * `opts` - accepts a `:flavor` option with one of the following values:
+    * `:elixir` (the default) - path segments are the snake cased module
+      segments, as in `lib/my_app/some/worker.ex`.
+    * `:mix_task` - segments are joined with dots, as in
+      `lib/mix/tasks/mod.new.ex`.
+    * `:phoenix` - controllers, views, components, live views, channels and
+      sockets are placed in the conventional Phoenix sub-directories, as in
+      `lib/my_app_web/controllers/user_controller.ex`.
+
+  ### Options
+
+  * `:names` - custom snake case forms for words found in module names, given as
+    `{word, snake_form}` pairs in a keyword list or a map. For instance with
+    `names: [RabbitMQ: "rabbitmq"]`, the module `MyApp.RabbitMQConsumer`
+    resolves to `my_app/rabbitmq_consumer.ex` instead of
+    `my_app/rabbit_mq_consumer.ex`.
+  """
   def define!(points, opts \\ [])
 
   def define!(points, opts) when is_list(points) do
@@ -39,6 +94,12 @@ defmodule Modkit.Mount do
     raise ArgumentError, ":mount config option must be a list of tuples, got: #{inspect(other)}"
   end
 
+  @doc """
+  Builds a mount from a list of mount points.
+
+  Accepts the same points and options as `define!/2` but returns
+  `{:ok, mount}`, or `{:error, exception}` when a point is invalid.
+  """
   def define(raw_points, opts \\ [])
 
   def define(points, opts) do
@@ -92,6 +153,22 @@ defmodule Modkit.Mount do
           "invalid point in :mount config option, got: #{inspect(point)}, error: #{inspect(reason)}"
   end
 
+  @doc """
+  Derives a mount for test modules from the given mount.
+
+  Each mount point is replaced by two points targeting the test directory: one
+  keeping the original prefix, and one with a `Test` suffix on the prefix. For
+  instance `{MyApp, "lib/my_app"}` produces `{MyApp, "test/my_app"}` and
+  `{MyAppTest, "test/my_app_test"}`. Paths resolved from the derived mount use
+  the `.exs` extension:
+
+      iex> mount = Modkit.Mount.define!([{MyApp, "lib/my_app"}])
+      iex> test_mount = Modkit.Mount.as_test(mount)
+      iex> Modkit.Mount.preferred_path(test_mount, MyApp.WorkerTest)
+      {:ok, "test/my_app/worker_test.exs"}
+
+  Points mounted on `:ignore` are kept as they are.
+  """
   def as_test(%__MODULE__{} = mount) do
     points =
       Enum.flat_map(mount.points, fn point ->
@@ -164,6 +241,28 @@ defmodule Modkit.Mount do
     a > b
   end
 
+  @doc """
+  Returns the mount point covering the given module.
+
+  The mount can be given as a `Modkit.Mount` struct or a list of
+  `Modkit.Mount.Point` structs, and the module as a module name or a list of
+  segments as returned by `Module.split/1`.
+
+  Returns `{:ok, point}` for the first point whose prefix covers the module,
+  `:ignore` when that point is mounted on `:ignore`, and
+  `{:error, :not_mounted}` when no point matches.
+
+  ### Examples
+
+      iex> mount = Modkit.Mount.define!([{MyApp, "lib/my_app"}, {MyApp.Ecto, :ignore}])
+      iex> {:ok, point} = Modkit.Mount.resolve(mount, MyApp.Worker)
+      iex> point.path
+      "lib/my_app"
+      iex> Modkit.Mount.resolve(mount, MyApp.Ecto.Repo)
+      :ignore
+      iex> Modkit.Mount.resolve(mount, Other.Worker)
+      {:error, :not_mounted}
+  """
   def resolve(%__MODULE__{} = mount, mod_split) do
     resolve(mount.points, mod_split)
   end
@@ -176,6 +275,7 @@ defmodule Modkit.Mount do
     do_resolve(points, mod_split)
   end
 
+  @doc false
   def do_resolve([p | points], mod_split) when is_list(mod_split) do
     if prefix_of?(p, mod_split) do
       case p do
@@ -191,6 +291,11 @@ defmodule Modkit.Mount do
     {:error, :not_mounted}
   end
 
+  @doc """
+  Returns whether the given mount point covers the module, that is whether the
+  point prefix is a prefix of the module name. The module is given as a list of
+  segments as returned by `Module.split/1`.
+  """
   def prefix_of?(%{pre_split: pre_split}, mod_split) do
     List.starts_with?(mod_split, pre_split)
   end
@@ -203,6 +308,28 @@ defmodule Modkit.Mount do
     {:error, reason}
   end
 
+  @doc """
+  Returns the file path where the given module belongs according to the mount.
+
+  The path joins the mount point directory with the snake cased module segments
+  that follow the point prefix. The extension is `.ex`, or `.exs` for mounts
+  derived with `as_test/1`.
+
+  Returns `{:ok, path}` on success, `:ignore` when the module resolves to an
+  `:ignore` point, `{:error, :not_mounted}` when no point covers the module,
+  and `{:error, :not_elixir}` for module names without the `Elixir.` namespace,
+  such as Erlang module names.
+
+  ### Examples
+
+      iex> mount = Modkit.Mount.define!([{MyApp, "lib/my_app"}, {MyApp.Schemas, "lib/schemas"}])
+      iex> Modkit.Mount.preferred_path(mount, MyApp.Some.Worker)
+      {:ok, "lib/my_app/some/worker.ex"}
+      iex> Modkit.Mount.preferred_path(mount, MyApp.Schemas.User)
+      {:ok, "lib/schemas/user.ex"}
+      iex> Modkit.Mount.preferred_path(mount, Other.Module)
+      {:error, :not_mounted}
+  """
   def preferred_path(%__MODULE__{} = mount, module) when is_atom(module) do
     with {:ok, mod_split} <- split_mod(module),
          {:ok, point} <- resolve(mount, mod_split) do

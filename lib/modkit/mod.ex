@@ -1,4 +1,15 @@
 defmodule Modkit.Mod do
+  @moduledoc """
+  Functions to inspect the modules of an application: list them, locate their
+  source files, and derive related module names.
+  """
+
+  @doc """
+  Returns the path of the source file that defines the given module.
+
+  The path is returned relative to `relative_to`, which defaults to the current
+  working directory. Raises an `ArgumentError` when the module cannot be loaded.
+  """
   def current_path(module, relative_to \\ File.cwd!()) do
     if Code.ensure_loaded?(module) do
       source = Keyword.fetch!(module.module_info(:compile), :source) |> List.to_string()
@@ -8,6 +19,12 @@ defmodule Modkit.Mod do
     end
   end
 
+  @doc """
+  Returns all modules of the given OTP application.
+
+  The application must be loaded, which is always the case for the current
+  application in a Mix project. Raises an `ArgumentError` otherwise.
+  """
   def list_all(otp_app) do
     case :application.get_key(otp_app, :modules) do
       {:ok, mods} ->
@@ -22,6 +39,13 @@ defmodule Modkit.Mod do
     end
   end
 
+  @doc """
+  Groups the given modules by the source file that defines them.
+
+  Returns a map with file paths as keys and lists of modules as values. Paths
+  are relative to `relative_to`, which defaults to the current working
+  directory.
+  """
   def group_by_file(modules, relative_to \\ File.cwd!()) do
     Enum.group_by(modules, &current_path(&1, relative_to))
   end
@@ -157,6 +181,14 @@ defmodule Modkit.Mod do
     end
   end
 
+  @doc """
+  Returns the conventional test module name for the given module.
+
+  ### Examples
+
+      iex> as_test(MyApp.Worker)
+      MyApp.WorkerTest
+  """
   def as_test(module) when is_atom(module) do
     Module.concat([inspect(module) <> "Test"])
   end

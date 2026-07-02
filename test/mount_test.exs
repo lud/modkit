@@ -2,6 +2,8 @@ defmodule Modkit.MountTest do
   alias Modkit.Mount
   use ExUnit.Case, async: true
 
+  doctest Modkit.Mount
+
   test "mount points can be defined" do
     assert {:ok, _} = Mount.define([])
     assert {:ok, _} = Mount.define([{AAA, "lib/aaa"}])

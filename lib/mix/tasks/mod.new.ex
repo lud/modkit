@@ -131,6 +131,7 @@ defmodule Mix.Tasks.Mod.New do
     })
   end
 
+  @doc false
   def generate(project, module, options) do
     with {:ok, template} <- find_template(options),
          {:ok, generations} <- build_generations(project, module, template, options),

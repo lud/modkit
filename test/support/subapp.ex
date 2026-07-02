@@ -1,4 +1,6 @@
 defmodule Modkit.Support.Subapp do
+  @moduledoc false
+
   alias Modkit.SnakeCase
 
   @subapp_mix_env "dev"
