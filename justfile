@@ -2,7 +2,7 @@ run:
   mix mod.relocate
 
 _mix_deps:
-  mix deps.get
+  out=$(mix deps.get) && echo "all dependencies fetched" || { echo "$out"; exit 1; }
 
 install: reinstall
 
