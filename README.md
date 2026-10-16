@@ -23,7 +23,7 @@ Or add it as a dependency to your project:
 ```elixir
 defp deps do
   [
-    {:modkit, "~> 0.9"},
+    {:modkit, "~> 0.10"},
   ]
 end
 ```
