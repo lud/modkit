@@ -60,7 +60,8 @@ defmodule Mix.Tasks.Mod.New do
   If not defined, default mount points are defined as follows:
 
       [
-        {App, "lib/app"}
+        {App, "lib/app"},
+        {AppWeb, "lib/app_web", flavor: :phoenix},
         {Mix.Tasks, "lib/mix/tasks", flavor: :mix_task}
       ]
 

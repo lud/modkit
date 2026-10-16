@@ -220,6 +220,22 @@ defmodule Modkit.ModNewTest do
       assert test_content =~ "use ExUnit.Case"
     end
 
+    test "places phoenix modules and tests in the phoenix sub-directories" do
+      assert {:ok, paths} =
+               generate(project(), ModkitDemoWeb.Admin.TestableController, %{
+                 overwrite: false,
+                 generate_mod: true,
+                 generate_test: true
+               })
+
+      assert target("lib/modkit_demo_web/controllers/admin/testable_controller.ex") in paths
+
+      assert target("test/modkit_demo_web/controllers/admin/testable_controller_test.exs") in paths
+
+      assert Subapp.exists?("lib/modkit_demo_web/controllers/admin/testable_controller.ex")
+      assert Subapp.exists?("test/modkit_demo_web/controllers/admin/testable_controller_test.exs")
+    end
+
     test "fails when module exists and -u is used" do
       Subapp.create_file("lib/modkit_demo/existing_mod.ex", valid_existing_module("foo"))
 

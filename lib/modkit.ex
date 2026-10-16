@@ -33,8 +33,10 @@ defmodule Modkit do
   * `:otp_app` - the `:app` value of the configuration.
   * `:mount` - a `Modkit.Mount` struct built from the `:mount` entry of the
     `:modkit` configuration. When that entry is missing, the root module is
-    mounted on the application code directory (as in `{MyApp, "lib/my_app"}`)
-    and `Mix.Tasks` is mounted on `lib/mix/tasks` with the `:mix_task` flavor.
+    mounted on the application code directory (as in `{MyApp, "lib/my_app"}`),
+    the web module is mounted next to it with the `:phoenix` flavor (as in
+    `{MyAppWeb, "lib/my_app_web"}`), and `Mix.Tasks` is mounted on
+    `lib/mix/tasks` with the `:mix_task` flavor.
   * `:app_dir` - the application directory.
 
   ### Options
@@ -89,7 +91,15 @@ defmodule Modkit do
 
     [
       {default_root_mod, app_code_path, flavor: :elixir},
+      {web_module(default_root_mod), app_code_path <> "_web", flavor: :phoenix},
       {Mix.Tasks, mix_tasks_path, flavor: :mix_task}
     ]
+  end
+
+  defp web_module(root_mod) do
+    root_mod
+    |> Module.split()
+    |> List.update_at(-1, &(&1 <> "Web"))
+    |> Module.concat()
   end
 end

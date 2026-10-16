@@ -68,7 +68,9 @@ defmodule Modkit.Mount do
       `lib/mix/tasks/mod.new.ex`.
     * `:phoenix` - controllers, views, components, live views, channels and
       sockets are placed in the conventional Phoenix sub-directories, as in
-      `lib/my_app_web/controllers/user_controller.ex`.
+      `lib/my_app_web/controllers/user_controller.ex`. Namespaces are nested
+      under that sub-directory, as in
+      `lib/my_app_web/controllers/admin/user_controller.ex`.
 
   ### Options
 
@@ -190,13 +192,26 @@ defmodule Modkit.Mount do
             test_pre_split = List.update_at(point.pre_split, -1, &(&1 <> "Test"))
 
             [
-              %{point | path: base_path, flavor: :test},
-              %{point | path: test_path, pre_split: test_pre_split, flavor: :test}
+              %{point | path: base_path, flavor: test_flavor(point.flavor)},
+              %{
+                point
+                | path: test_path,
+                  pre_split: test_pre_split,
+                  flavor: test_flavor(point.flavor)
+              }
             ]
         end
       end)
 
     %{mount | points: points}
+  end
+
+  defp test_flavor(:phoenix) do
+    :phoenix_test
+  end
+
+  defp test_flavor(_) do
+    :test
   end
 
   @doc """
@@ -344,7 +359,7 @@ defmodule Modkit.Mount do
     Path.join(:lists.flatten([point.path, sub_path])) <> file_suffix(point.flavor)
   end
 
-  defp file_suffix(:test) do
+  defp file_suffix(flavor) when flavor in [:test, :phoenix_test] do
     ".exs"
   end
 
@@ -370,50 +385,46 @@ defmodule Modkit.Mount do
     Enum.map_join(segments, ".", to_snake)
   end
 
-  defp path_segments([segment | rest], flavor, to_snake) do
-    [format_segment(segment, flavor, to_snake) | path_segments(rest, flavor, to_snake)]
-  end
+  defp path_segments(segments, flavor, to_snake) when flavor in [:phoenix, :phoenix_test] do
+    snaked = Enum.map(segments, to_snake)
 
-  defp path_segments([], _, _) do
-    []
-  end
-
-  defp format_segment(segment, flavor, to_snake) when flavor in [:elixir, :test] do
-    to_snake.(segment)
-  end
-
-  defp format_segment(segment, :phoenix, to_snake) do
-    basename = format_segment(segment, :elixir, to_snake)
-
-    matchers = [
-      {fn -> segment == "Layouts" end, ["components", basename]},
-      {fn -> String.ends_with?(segment, "Component") end, ["components", basename]},
-      {fn -> String.ends_with?(segment, "Components") end, ["components", basename]},
-      # controllers
-      {fn -> String.ends_with?(segment, "Controller") end, ["controllers", basename]},
-      {fn -> String.ends_with?(segment, "HTML") end, ["controllers", basename]},
-      {fn -> String.ends_with?(segment, "JSON") end, ["controllers", basename]},
-      # live
-      {fn -> String.ends_with?(segment, "Live") end, ["live", basename]},
-      # views
-      {fn -> String.ends_with?(segment, "View") end, ["views", basename]},
-      # channels
-      {fn -> String.ends_with?(segment, "Channel") end, ["channels", basename]},
-      {fn -> String.ends_with?(segment, "Socket") end, ["channels", basename]}
-    ]
-
-    found =
-      Enum.find(matchers, fn {match, result} ->
-        if match.() do
-          result
-        else
-          nil
-        end
-      end)
-
-    case found do
-      {_, result} -> result
-      nil -> basename
+    case Enum.find_value(category_candidates(segments, flavor), &phoenix_category/1) do
+      nil -> snaked
+      category -> [category | snaked]
     end
+  end
+
+  defp path_segments(segments, _flavor, to_snake) do
+    Enum.map(segments, to_snake)
+  end
+
+  defp category_candidates(segments, :phoenix) do
+    segments
+  end
+
+  defp category_candidates(segments, :phoenix_test) do
+    List.update_at(segments, -1, &String.replace_suffix(&1, "Test", ""))
+  end
+
+  defp phoenix_category("Layouts") do
+    "components"
+  end
+
+  defp phoenix_category(segment) do
+    Enum.find_value(
+      [
+        {"Component", "components"},
+        {"Components", "components"},
+        {"Controller", "controllers"},
+        {"HTML", "controllers"},
+        {"JSON", "controllers"},
+        {"Live", "live"},
+        {"View", "views"},
+        {"Channel", "channels"},
+        {"Socket", "channels"},
+        {"Presence", "channels"}
+      ],
+      fn {suffix, category} -> String.ends_with?(segment, suffix) && category end
+    )
   end
 end

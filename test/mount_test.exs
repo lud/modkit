@@ -107,6 +107,27 @@ defmodule Modkit.MountTest do
     check.("lib/app/controllers/some_json.ex", App.SomeJSON)
     check.("lib/app/channels/some_channel.ex", App.SomeChannel)
     check.("lib/app/channels/some_socket.ex", App.SomeSocket)
+    check.("lib/app/channels/presence.ex", App.Presence)
+    check.("lib/app/channels/my_presence.ex", App.MyPresence)
+  end
+
+  test "the phoenix flavor nests namespaces under the sub-directory" do
+    {:ok, mount} = Mount.define([{App, "lib/app", flavor: :phoenix}])
+
+    check = fn expected_path, module ->
+      assert {:ok, expected_path} == Mount.preferred_path(mount, module)
+    end
+
+    check.("lib/app/live/post_live/index.ex", App.PostLive.Index)
+    check.("lib/app/live/post_live/form_component.ex", App.PostLive.FormComponent)
+    check.("lib/app/live/post_live/show_html.ex", App.PostLive.ShowHTML)
+    check.("lib/app/controllers/page_html/some_component.ex", App.PageHTML.SomeComponent)
+    check.("lib/app/controllers/admin/post_controller.ex", App.Admin.PostController)
+    check.("lib/app/controllers/admin/post_html.ex", App.Admin.PostHTML)
+    check.("lib/app/controllers/admin/blog/post_json.ex", App.Admin.Blog.PostJSON)
+    check.("lib/app/live/admin/post_live/index.ex", App.Admin.PostLive.Index)
+    check.("lib/app/channels/admin/room_channel.ex", App.Admin.RoomChannel)
+    check.("lib/app/admin/helpers.ex", App.Admin.Helpers)
   end
 
   test "the mix task flavor uses dots for the last segment" do
@@ -161,6 +182,31 @@ defmodule Modkit.MountTest do
     assert {:ok, "test/aaa/bbb.exs"} = Mount.preferred_path(test_mount, AAA.BBB)
     assert {:ok, "test/aaa_test.exs"} = Mount.preferred_path(test_mount, AAATest)
     assert {:ok, "test/aaa/bbb_test.exs"} = Mount.preferred_path(test_mount, AAA.BBBTest)
+  end
+
+  test "transforming a phoenix mount to test mount" do
+    mount = Mount.define!([{AppWeb, "lib/app_web", flavor: :phoenix}])
+    test_mount = Mount.as_test(mount)
+
+    check = fn expected_path, module ->
+      assert {:ok, expected_path} == Mount.preferred_path(test_mount, module)
+    end
+
+    check.("test/app_web/controllers/page_controller_test.exs", AppWeb.PageControllerTest)
+    check.("test/app_web/controllers/error_html_test.exs", AppWeb.ErrorHTMLTest)
+    check.("test/app_web/controllers/error_json_test.exs", AppWeb.ErrorJSONTest)
+
+    check.(
+      "test/app_web/controllers/admin/post_controller_test.exs",
+      AppWeb.Admin.PostControllerTest
+    )
+
+    check.("test/app_web/live/post_live_test.exs", AppWeb.PostLiveTest)
+    check.("test/app_web/live/admin/post_live_test.exs", AppWeb.Admin.PostLiveTest)
+    check.("test/app_web/live/user_live/login_test.exs", AppWeb.UserLive.LoginTest)
+    check.("test/app_web/channels/room_channel_test.exs", AppWeb.RoomChannelTest)
+    check.("test/app_web/router_test.exs", AppWeb.RouterTest)
+    check.("test/app_web_test.exs", AppWebTest)
   end
 
   describe "path_as_test/1" do
