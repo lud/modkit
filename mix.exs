@@ -71,19 +71,27 @@ defmodule Modkit.MixProject do
 
   defp versioning do
     [
-      annotate: true,
       before_commit: [
-        fn vsn ->
-          case System.cmd("git", ["cliff", "--tag", vsn, "-o", "CHANGELOG.md"],
-                 stderr_to_stdout: true
-               ) do
-            {_, 0} -> IO.puts("Updated CHANGELOG.md with #{vsn}")
-            {out, _} -> {:error, "Could not update CHANGELOG.md:\n\n #{out}"}
-          end
-        end,
-        add: "CHANGELOG.md"
+        &readmix/1,
+        {:add, "README.md"},
+        &gen_changelog/2,
+        {:add, "CHANGELOG.md"}
       ]
     ]
+  end
+
+  def readmix(vsn) do
+    rdmx = Readmix.new(vars: %{app_vsn: vsn})
+    :ok = Readmix.update_file(rdmx, "README.md")
+  end
+
+  defp gen_changelog(vsn, info) do
+    args = ["cliff", "--tag", vsn, "--with-tag-message", info.annotation, "-o", "CHANGELOG.md"]
+
+    case System.cmd("git", args, stderr_to_stdout: true) do
+      {_, 0} -> IO.puts("Updated CHANGELOG.md with #{vsn}")
+      {out, _} -> {:error, "Could not update CHANGELOG.md:\n\n #{out}"}
+    end
   end
 
   defp dialyzer do
